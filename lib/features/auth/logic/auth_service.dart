@@ -44,7 +44,7 @@ class AuthService {
         final message = data['message'] ?? 'Đăng nhập không thành công (Mã lỗi ${response.statusCode})';
         throw Exception(message);
       }
-    } on http.ClientException catch (e) {
+    } on http.ClientException {
       throw Exception('Không thể kết nối đến máy chủ Backend (${ApiEndpoints.baseUrl}). Vui lòng kiểm tra xem Backend ASP.NET Core đã được khởi động chưa!');
     } catch (e) {
       if (e is Exception) rethrow;

@@ -42,8 +42,10 @@ class _StudentTopicListScreenState extends State<StudentTopicListScreen> {
   @override
   void initState() {
     super.initState();
-    _lecturers = ['Giảng viên', ..._topicService.getLecturers().where((l) => l != 'Tất cả')];
-    _directions = ['Hướng đề tài', ..._topicService.getDirections().where((d) => d != 'Tất cả')];
+    final rawLecturers = _topicService.getLecturers();
+    _lecturers = ['Giảng viên', ...rawLecturers.where((l) => l != 'Tất cả')];
+    final rawDirections = _topicService.getDirections();
+    _directions = ['Hướng đề tài', ...rawDirections.where((d) => d != 'Tất cả')];
     _fetchTopics();
   }
 

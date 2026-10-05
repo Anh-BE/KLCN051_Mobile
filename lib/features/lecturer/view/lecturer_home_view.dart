@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../auth/model/user_model.dart';
+import '../topic/view/lecturer_topic_list_screen.dart';
 
 class LecturerHomeView extends StatelessWidget {
   final UserModel user;
@@ -124,7 +125,14 @@ class LecturerHomeView extends StatelessWidget {
                         label: 'Đề tài & Trạng thái',
                         bgColor: const Color(0xFFF0FDF4),
                         iconColor: const Color(0xFF16A34A),
-                        onTap: () {},
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => LecturerTopicListScreen(user: user),
+                            ),
+                          );
+                        },
                       ),
                       _buildQuickAction(
                         icon: Icons.assignment_outlined,
@@ -162,11 +170,29 @@ class LecturerHomeView extends StatelessWidget {
             child: Row(
               children: [
                 Expanded(
-                  child: _buildStatCard('6', 'Đề tài hướng dẫn', Icons.menu_book_rounded, const Color(0xFF0284C7)),
+                  child: _buildStatCard(
+                    '6',
+                    'Đề tài hướng dẫn',
+                    Icons.menu_book_rounded,
+                    const Color(0xFF0284C7),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => LecturerTopicListScreen(user: user),
+                        ),
+                      );
+                    },
+                  ),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
-                  child: _buildStatCard('4', 'Báo cáo chờ duyệt', Icons.pending_actions_rounded, const Color(0xFFF59E0B)),
+                  child: _buildStatCard(
+                    '4',
+                    'Báo cáo chờ duyệt',
+                    Icons.pending_actions_rounded,
+                    const Color(0xFFF59E0B),
+                  ),
                 ),
               ],
             ),
@@ -177,29 +203,33 @@ class LecturerHomeView extends StatelessWidget {
     );
   }
 
-  Widget _buildStatCard(String value, String label, IconData icon, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: color, size: 26),
-          const SizedBox(height: 10),
-          Text(value, style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: color)),
-          const SizedBox(height: 2),
-          Text(label, style: const TextStyle(fontSize: 12.5, color: Color(0xFF64748B), fontWeight: FontWeight.w500)),
-        ],
+  Widget _buildStatCard(String value, String label, IconData icon, Color color, {VoidCallback? onTap}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: color, size: 26),
+            const SizedBox(height: 10),
+            Text(value, style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: color)),
+            const SizedBox(height: 2),
+            Text(label, style: const TextStyle(fontSize: 12.5, color: Color(0xFF64748B), fontWeight: FontWeight.w500)),
+          ],
+        ),
       ),
     );
   }
