@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../../core/widgets/huit_loading.dart';
 import '../../../auth/model/user_model.dart';
+import '../../review_report/logic/weekly_report_service.dart';
+import '../../review_report/model/weekly_report_model.dart';
 import '../logic/lecturer_topic_service.dart';
 import '../model/lecturer_thesis_model.dart';
 
@@ -84,12 +86,8 @@ class _LecturerTopicListScreenState extends State<LecturerTopicListScreen> {
       filtered = filtered.where((t) {
         final title = t.thesisTitle.toLowerCase();
         final code = t.periodCode.toLowerCase();
-        final hasStudent = t.registeredGroups.any((g) =>
-            g.groupName.toLowerCase().contains(query) ||
-            g.members.any((m) =>
-                m.fullName.toLowerCase().contains(query) ||
-                m.studentCode.toLowerCase().contains(query)));
-        return title.contains(query) || code.contains(query) || hasStudent;
+        final type = t.thesisType.toLowerCase();
+        return title.contains(query) || code.contains(query) || type.contains(query);
       }).toList();
     }
 
@@ -120,7 +118,7 @@ class _LecturerTopicListScreenState extends State<LecturerTopicListScreen> {
 
             const SizedBox(height: 8),
 
-            // 4. DANH SÁCH ĐỀ TÀI & TRẠNG THÁI
+            // 4. DANH SÁCH ĐỀ TÀI & TRẠNG THÁI (Chỉ chứa đề tài, không hiển thị nhóm)
             Expanded(
               child: _isLoading
                   ? const Center(child: HuitLoading(size: 48, message: 'Đang tải danh sách đề tài...'))
@@ -224,7 +222,7 @@ class _LecturerTopicListScreenState extends State<LecturerTopicListScreen> {
                 controller: _searchController,
                 onChanged: (_) => _applyFilter(),
                 decoration: InputDecoration(
-                  hintText: 'Tìm theo tên, mã đề tài, nhóm...',
+                  hintText: 'Tìm theo tên, mã đề tài...',
                   hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
                   prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF0D9488), size: 20),
                   suffixIcon: _searchController.text.isNotEmpty
@@ -415,11 +413,9 @@ class _LecturerTopicListScreenState extends State<LecturerTopicListScreen> {
     );
   }
 
-  // 4. Thẻ Đề tài chi tiết
+  // 4. Thẻ Đề tài chi tiết: CHỈ CHỨA ĐỀ TÀI, BỎ MỤC NHÓM ĐĂNG KÝ
   Widget _buildThesisCard(LecturerThesisModel thesis) {
     final (statusBg, statusTextColor, statusText, statusIcon) = _getThesisStatusMeta(thesis.status);
-    final hasGroup = thesis.registeredGroups.isNotEmpty;
-    final registeredGroup = hasGroup ? thesis.registeredGroups.first : null;
 
     return Container(
       decoration: BoxDecoration(
@@ -436,7 +432,7 @@ class _LecturerTopicListScreenState extends State<LecturerTopicListScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header của Card: Mã đề tài + Badge trạng thái
+          // Header của Card: Mã đề tài + Tên đợt + Badge trạng thái
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: const BoxDecoration(
@@ -535,94 +531,7 @@ class _LecturerTopicListScreenState extends State<LecturerTopicListScreen> {
 
                 const SizedBox(height: 14),
 
-                // KHỐI THÔNG TIN NHÓM SINH VIÊN ĐĂNG KÝ
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: hasGroup ? const Color(0xFFF8FAFC) : const Color(0xFFFFFBEB),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: hasGroup ? const Color(0xFFE2E8F0) : const Color(0xFFFDE68A),
-                      width: 1,
-                    ),
-                  ),
-                  child: hasGroup
-                      ? Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                const Icon(Icons.groups_rounded, color: Color(0xFF0F766E), size: 20),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    registeredGroup!.groupName,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 13.5,
-                                      color: Color(0xFF1E293B),
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF0F766E).withValues(alpha: 0.12),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Text(
-                                    '${registeredGroup.memberCount} thành viên',
-                                    style: const TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w700,
-                                      color: Color(0xFF0F766E),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            if (registeredGroup.members.isNotEmpty) ...[
-                              const SizedBox(height: 8),
-                              const Divider(height: 1, color: Color(0xFFE2E8F0)),
-                              const SizedBox(height: 8),
-                              Row(
-                                children: [
-                                  const Icon(Icons.person_pin_rounded, color: Color(0xFF64748B), size: 16),
-                                  const SizedBox(width: 6),
-                                  Expanded(
-                                    child: Text(
-                                      'Trưởng nhóm: ${registeredGroup.members.first.fullName} (${registeredGroup.members.first.studentCode})',
-                                      style: const TextStyle(fontSize: 12.5, color: Color(0xFF475569)),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ],
-                        )
-                      : const Row(
-                          children: [
-                            Icon(Icons.info_outline_rounded, color: Color(0xFFD97706), size: 18),
-                            SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'Chưa có nhóm sinh viên nào đăng ký',
-                                style: TextStyle(
-                                  fontSize: 12.5,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFFB45309),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                ),
-
-                const SizedBox(height: 14),
-
-                // NÚT DUY NHẤT: XEM CHI TIẾT ĐỀ TÀI (Gồm Thông tin, Bảng CLO, Báo cáo tiến độ)
+                // NÚT XEM CHI TIẾT ĐỀ TÀI: Mở 3 mục (Thông tin đề tài, Bảng CLO, Báo cáo tiến độ tuần)
                 SizedBox(
                   width: double.infinity,
                   height: 44,
@@ -675,7 +584,7 @@ class _LecturerTopicListScreenState extends State<LecturerTopicListScreen> {
     );
   }
 
-  // BottomSheet chi tiết đề tài: Đúng 3 mục (Thông tin, Bảng CLO, Báo cáo tiến độ)
+  // BottomSheet chi tiết đề tài: Đúng 3 mục (Thông tin đề tài, Bảng CLO, Bảng báo cáo tiến độ tuần)
   void _openThesisDetailSheet(LecturerThesisModel thesis) {
     showModalBottomSheet(
       context: context,
@@ -749,7 +658,10 @@ class _LecturerTopicListScreenState extends State<LecturerTopicListScreen> {
   }
 }
 
-// BOTTOM SHEET CHI TIẾT ĐỀ TÀI: ĐÚNG 3 MỤC (THÔNG TIN ĐỀ TÀI, BẢNG CLO, BÁO CÁO TIẾN ĐỘ)
+// BOTTOM SHEET CHI TIẾT ĐỀ TÀI: ĐÚNG 3 MỤC
+// 1. THÔNG TIN ĐỀ TÀI
+// 2. BẢNG CLO
+// 3. BẢNG BÁO CÁO TIẾN ĐỘ TUẦN
 class _ThesisDetailBottomSheet extends StatefulWidget {
   final LecturerThesisModel thesis;
   final UserModel user;
@@ -766,6 +678,8 @@ class _ThesisDetailBottomSheet extends StatefulWidget {
 class _ThesisDetailBottomSheetState extends State<_ThesisDetailBottomSheet> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final Set<String> _expandedCloKeys = {};
+  List<WeeklyTimelineItemModel> _weeklyTimeline = [];
+  bool _isLoadingTimeline = true;
 
   String _getCloKey(OutlineObjectiveItem clo) {
     if (clo.clocode.trim().isNotEmpty) return clo.clocode.trim();
@@ -775,10 +689,23 @@ class _ThesisDetailBottomSheetState extends State<_ThesisDetailBottomSheet> with
   @override
   void initState() {
     super.initState();
-    // ĐÚNG 3 TAB: THÔNG TIN ĐỀ TÀI, BẢNG CLO, BÁO CÁO TIẾN ĐỘ
+    // ĐÚNG 3 TAB: THÔNG TIN ĐỀ TÀI, BẢNG CLO, BẢNG BÁO CÁO TIẾN ĐỘ TUẦN
     _tabController = TabController(length: 3, vsync: this);
     if (widget.thesis.outlineObjectives.isNotEmpty) {
       _expandedCloKeys.add(_getCloKey(widget.thesis.outlineObjectives.first));
+    }
+    _loadWeeklyTimeline();
+  }
+
+  /// Tải bảng báo cáo tiến độ tuần từ CSDL thật
+  Future<void> _loadWeeklyTimeline() async {
+    setState(() => _isLoadingTimeline = true);
+    final data = await WeeklyReportService().getThesisTimeline(widget.thesis.thesisId);
+    if (mounted) {
+      setState(() {
+        _weeklyTimeline = data;
+        _isLoadingTimeline = false;
+      });
     }
   }
 
@@ -804,7 +731,7 @@ class _ThesisDetailBottomSheetState extends State<_ThesisDetailBottomSheet> with
     final thesis = widget.thesis;
 
     return Container(
-      height: MediaQuery.of(context).size.height * 0.85,
+      height: MediaQuery.of(context).size.height * 0.88,
       decoration: const BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
@@ -855,7 +782,7 @@ class _ThesisDetailBottomSheetState extends State<_ThesisDetailBottomSheet> with
             ),
           ),
 
-          // TabBar: 3 TABS CHUẨN MỰC
+          // TabBar: ĐÚNG 3 MỤC THEO YÊU CẦU
           Container(
             decoration: const BoxDecoration(
               border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0), width: 1)),
@@ -870,7 +797,7 @@ class _ThesisDetailBottomSheetState extends State<_ThesisDetailBottomSheet> with
               tabs: [
                 const Tab(text: 'Thông tin đề tài'),
                 Tab(text: 'Bảng CLO (${thesis.outlineObjectives.length})'),
-                Tab(text: 'Báo cáo tiến độ (${thesis.registeredGroups.isNotEmpty ? thesis.registeredGroups.first.memberCount : 0})'),
+                const Tab(text: 'Bảng báo cáo tiến độ tuần'),
               ],
             ),
           ),
@@ -959,142 +886,264 @@ class _ThesisDetailBottomSheetState extends State<_ThesisDetailBottomSheet> with
                         ],
                       ),
 
-                // TAB 3: BẢNG BÁO CÁO TIẾN ĐỘ & NHÓM SINH VIÊN
-                thesis.registeredGroups.isEmpty
-                    ? const Center(
-                        child: Padding(
-                          padding: EdgeInsets.all(32),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.info_outline_rounded, color: Color(0xFF94A3B8), size: 44),
-                              SizedBox(height: 12),
-                              Text('Chưa có nhóm sinh viên nào đăng ký đề tài này',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.w600)),
-                              SizedBox(height: 6),
-                              Text('Khi sinh viên đăng ký và được chấp thuận, thông tin nhóm và tiến độ sẽ hiển thị tại đây.',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12.5)),
-                            ],
-                          ),
-                        ),
-                      )
-                    : ListView(
-                        padding: const EdgeInsets.all(20),
-                        children: [
-                          // Hộp thông tin nhóm
-                          Container(
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF0FDF4),
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(color: const Color(0xFFBBF7D0)),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.check_circle_rounded, color: Color(0xFF16A34A)),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        thesis.registeredGroups.first.groupName,
-                                        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: Color(0xFF166534)),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        'Đăng ký lúc: ${thesis.registeredGroups.first.registeredAt}',
-                                        style: const TextStyle(fontSize: 12, color: Color(0xFF15803D)),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-
-                          _buildSectionTitle('Danh sách thành viên nhóm:'),
-                          const SizedBox(height: 8),
-                          ...thesis.registeredGroups.first.members.map((m) {
-                            final isLeader = m.role.toLowerCase().contains('trưởng') || m.role.toLowerCase().contains('leader');
-                            return Container(
-                              margin: const EdgeInsets.only(bottom: 10),
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: const Color(0xFFE2E8F0)),
-                              ),
-                              child: Row(
-                                children: [
-                                  CircleAvatar(
-                                    backgroundColor: isLeader ? const Color(0xFF0F766E) : const Color(0xFFE2E8F0),
-                                    child: Text(
-                                      m.fullName.isNotEmpty ? m.fullName.trim().split(' ').last[0] : 'S',
-                                      style: TextStyle(
-                                        color: isLeader ? Colors.white : const Color(0xFF475569),
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Row(
-                                          children: [
-                                            Text(
-                                              m.fullName,
-                                              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5, color: Color(0xFF1E293B)),
-                                            ),
-                                            if (isLeader) ...[
-                                              const SizedBox(width: 6),
-                                              Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                                decoration: BoxDecoration(
-                                                  color: const Color(0xFFFEF3C7),
-                                                  borderRadius: BorderRadius.circular(6),
-                                                ),
-                                                child: const Text('Trưởng nhóm', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFFB45309))),
-                                              ),
-                                            ],
-                                          ],
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          'MSSV: ${m.studentCode} • Lớp: ${m.classCode}',
-                                          style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
-                                        ),
-                                        if (m.phoneNumber.isNotEmpty) ...[
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            'SĐT: ${m.phoneNumber}',
-                                            style: const TextStyle(fontSize: 12, color: Color(0xFF0F766E), fontWeight: FontWeight.w600),
-                                          ),
-                                        ],
-                                        if (m.email.isNotEmpty) ...[
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            'Email: ${m.email}',
-                                            style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
-                                          ),
-                                        ],
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }),
-                        ],
-                      ),
+                // TAB 3: BẢNG BÁO CÁO TIẾN ĐỘ TUẦN
+                _buildWeeklyReportTableTab(),
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  // TAB 3: BẢNG BÁO CÁO TIẾN ĐỘ TUẦN
+  Widget _buildWeeklyReportTableTab() {
+    if (_isLoadingTimeline) {
+      return const Center(
+        child: HuitLoading(size: 44, message: 'Đang tải bảng báo cáo tiến độ tuần...'),
+      );
+    }
+
+    if (_weeklyTimeline.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F5F9),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.event_busy_rounded, color: Color(0xFF94A3B8), size: 44),
+              ),
+              const SizedBox(height: 14),
+              const Text(
+                'Chưa có dữ liệu tiến độ tuần',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Đề tài chưa được khởi tạo kế hoạch 12 tuần trong hệ thống hoặc chưa bắt đầu đợt thực hiện.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 12.5, color: Color(0xFF64748B), height: 1.4),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final totalWeeks = _weeklyTimeline.length;
+    final approvedCount = _weeklyTimeline.where((w) => w.isApproved).length;
+    final submittedCount = _weeklyTimeline.where((w) => w.isSubmitted).length;
+    final percent = totalWeeks > 0 ? (approvedCount / totalWeeks * 100) : 0.0;
+
+    return ListView(
+      padding: const EdgeInsets.all(18),
+      children: [
+        // Card tóm tắt tiến độ tổng quát
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF0F766E), Color(0xFF115E59)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF0F766E).withValues(alpha: 0.2),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'TIẾN ĐỘ THỰC HIỆN ĐỀ TÀI',
+                    style: TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.w800, letterSpacing: 0.4),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '${percent.toStringAsFixed(1)}% Hoàn thành',
+                      style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: LinearProgressIndicator(
+                  value: (percent / 100).clamp(0.0, 1.0),
+                  minHeight: 6,
+                  backgroundColor: Colors.white.withValues(alpha: 0.25),
+                  valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF34D399)),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildProgressMiniStat('Tổng tuần', '$totalWeeks tuần'),
+                  _buildProgressMiniStat('Đã nộp', '$submittedCount/$totalWeeks'),
+                  _buildProgressMiniStat('Đã đạt', '$approvedCount/$totalWeeks'),
+                ],
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 16),
+        _buildSectionTitle('BẢNG DANH SÁCH BÁO CÁO CÁC TUẦN:'),
+        const SizedBox(height: 10),
+
+        // Danh sách các dòng báo cáo tuần
+        ..._weeklyTimeline.map((item) => _buildWeekRowItem(item)),
+      ],
+    );
+  }
+
+  Widget _buildProgressMiniStat(String label, String value) {
+    return Column(
+      children: [
+        Text(value, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w800)),
+        const SizedBox(height: 2),
+        Text(label, style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 10.5)),
+      ],
+    );
+  }
+
+  Widget _buildWeekRowItem(WeeklyTimelineItemModel item) {
+    Color badgeBg;
+    Color badgeText;
+    String badgeLabel;
+    IconData badgeIcon;
+
+    if (item.isApproved) {
+      badgeBg = const Color(0xFFD1FAE5);
+      badgeText = const Color(0xFF065F46);
+      badgeLabel = item.supervisorScore != null ? 'ĐẠT (${item.supervisorScore}đ)' : 'ĐÃ ĐẠT';
+      badgeIcon = Icons.check_circle_rounded;
+    } else if (item.isPending) {
+      badgeBg = const Color(0xFFFEF3C7);
+      badgeText = const Color(0xFF92400E);
+      badgeLabel = 'CHỜ DUYỆT';
+      badgeIcon = Icons.hourglass_top_rounded;
+    } else if (item.isOverdue) {
+      badgeBg = const Color(0xFFFEE2E2);
+      badgeText = const Color(0xFF991B1B);
+      badgeLabel = 'QUÁ HẠN';
+      badgeIcon = Icons.warning_amber_rounded;
+    } else {
+      badgeBg = const Color(0xFFF1F5F9);
+      badgeText = const Color(0xFF64748B);
+      badgeLabel = 'CHƯA NỘP';
+      badgeIcon = Icons.radio_button_unchecked_rounded;
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0F766E).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  'Tuần ${item.weekNumber.toString().padLeft(2, '0')}',
+                  style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: Color(0xFF0F766E)),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  item.formattedDeadline.isNotEmpty ? 'Hạn: ${item.formattedDeadline}' : '',
+                  style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: badgeBg,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(badgeIcon, size: 12, color: badgeText),
+                    const SizedBox(width: 4),
+                    Text(
+                      badgeLabel,
+                      style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: badgeText),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            item.title,
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
+          ),
+          if (item.detailedRequirements.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              item.detailedRequirements,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B), height: 1.3),
+            ),
+          ],
+          if (item.supervisorFeedback != null && item.supervisorFeedback!.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: Text(
+                'Nhận xét GV: ${item.supervisorFeedback}',
+                style: const TextStyle(fontSize: 11.5, fontStyle: FontStyle.italic, color: Color(0xFF0F766E)),
+              ),
+            ),
+          ],
         ],
       ),
     );
