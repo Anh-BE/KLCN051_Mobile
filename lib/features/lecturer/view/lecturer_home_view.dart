@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../auth/model/user_model.dart';
 import '../../notification/logic/notification_service.dart';
@@ -17,16 +18,26 @@ class LecturerHomeView extends StatefulWidget {
 class _LecturerHomeViewState extends State<LecturerHomeView> {
   final NotificationService _notificationService = NotificationService();
   int _unreadCount = 0;
+  Timer? _pollTimer;
 
   @override
   void initState() {
     super.initState();
     _fetchUnreadCount();
+    _pollTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (mounted) _fetchUnreadCount();
+    });
+  }
+
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _fetchUnreadCount() async {
     final count = await _notificationService.getUnreadCount();
-    if (mounted) {
+    if (mounted && count != _unreadCount) {
       setState(() {
         _unreadCount = count;
       });

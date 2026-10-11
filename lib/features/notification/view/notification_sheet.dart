@@ -77,21 +77,23 @@ class _NotificationSheetState extends State<NotificationSheet> {
 
     if (!mounted || widget.user == null) return;
 
-    // Điều hướng dựa vào category hoặc actionUrl
-    if (notif.category == 'thesis_approval' || notif.category == 'thesis_registration') {
-      Navigator.pop(context);
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => LecturerTopicListScreen(user: widget.user!),
-        ),
-      );
-    } else if (notif.category == 'weekly_report') {
+    // Điều hướng theo yêu cầu:
+    // - Nhóm đăng ký đề tài & sinh viên nộp báo cáo tuần -> Chuyển sang Xem báo cáo tuần
+    // - Đề tài được duyệt / từ chối / chỉnh sửa -> Chuyển sang Đề tài & Trạng thái
+    if (notif.category == 'thesis_registration' || notif.category == 'weekly_report') {
       Navigator.pop(context);
       Navigator.push(
         context,
         MaterialPageRoute(
           builder: (_) => LecturerWeeklyReportListScreen(user: widget.user!),
+        ),
+      );
+    } else {
+      Navigator.pop(context);
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => LecturerTopicListScreen(user: widget.user!),
         ),
       );
     }
@@ -302,12 +304,20 @@ class _NotificationSheetState extends State<NotificationSheet> {
                                               if (!notif.isRead) ...[
                                                 const SizedBox(width: 6),
                                                 Container(
-                                                  width: 8,
-                                                  height: 8,
+                                                  width: 9,
+                                                  height: 9,
                                                   margin: const EdgeInsets.only(top: 4),
-                                                  decoration: const BoxDecoration(
-                                                    color: Color(0xFF0D9488),
+                                                  decoration: BoxDecoration(
+                                                    color: const Color(0xFFEF4444),
                                                     shape: BoxShape.circle,
+                                                    border: Border.all(color: Colors.white, width: 1.5),
+                                                    boxShadow: [
+                                                      BoxShadow(
+                                                        color: const Color(0xFFEF4444).withOpacity(0.4),
+                                                        blurRadius: 4,
+                                                        offset: const Offset(0, 1),
+                                                      ),
+                                                    ],
                                                   ),
                                                 ),
                                               ],
