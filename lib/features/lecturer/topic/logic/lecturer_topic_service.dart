@@ -145,6 +145,40 @@ class LecturerTopicService {
     return result;
   }
 
+  /// 3. Lấy nội dung kế hoạch các tuần của đề tài từ CSDL thật (GET /api/RaDeTai/{thesisId}/weekly-plans)
+  Future<List<Map<String, dynamic>>> getThesisWeeklyPlans(int thesisId) async {
+    try {
+      final token = await StorageService.getToken();
+      final url = Uri.parse('${ApiEndpoints.baseUrl}/RaDeTai/$thesisId/weekly-plans');
+      final res = await http.get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 6));
+
+      if (res.statusCode == 200) {
+        final dynamic raw = jsonDecode(utf8.decode(res.bodyBytes));
+        if (raw is List) {
+          final list = raw
+              .where((e) => e != null && e is Map)
+              .map((e) => Map<String, dynamic>.from(e as Map))
+              .toList();
+          list.sort((a, b) {
+            final wA = (a['weekNumber'] ?? a['WeekNumber'] ?? 0) as int;
+            final wB = (b['weekNumber'] ?? b['WeekNumber'] ?? 0) as int;
+            return wA.compareTo(wB);
+          });
+          return list;
+        }
+      }
+    } catch (e) {
+      debugPrint('[LecturerTopicService] Error fetching weekly plans: $e');
+    }
+    return [];
+  }
+
   String _removeDiacritics(String str) {
     final regex = RegExp(r'[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữìíỉĩđỳýỵỷỹ]', caseSensitive: false);
     return str.replaceAllMapped(regex, (match) {
