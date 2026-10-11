@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../auth/model/user_model.dart';
+import 'manager_detailed_stats_screen.dart';
 
 class ManagerHomeView extends StatelessWidget {
   final UserModel user;
@@ -59,7 +60,7 @@ class ManagerHomeView extends StatelessWidget {
                       ),
                       const SizedBox(height: 3),
                       Text(
-                        'Ban Chủ Nhiệm Khoa • Quản trị',
+                        'Ban Chủ Nhiệm Khoa CNTT • HUIT',
                         style: TextStyle(
                           color: Colors.white.withOpacity(0.9),
                           fontSize: 13,
@@ -69,13 +70,22 @@ class ManagerHomeView extends StatelessWidget {
                     ],
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.18),
-                    shape: BoxShape.circle,
+                InkWell(
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => ManagerDetailedStatsScreen(user: user),
+                      ),
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.18),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.analytics_outlined, color: Colors.white, size: 24),
                   ),
-                  child: const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 24),
                 ),
               ],
             ),
@@ -83,17 +93,39 @@ class ManagerHomeView extends StatelessWidget {
 
           const SizedBox(height: 18),
 
-          // 2. DASHBOARD NHANH (THEO POSTER MA TRẬN)
+          // 2. DASHBOARD NHANH (THU THẬP DỮ LIỆU & HIỂN THỊ TỨC THÌ)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Dashboard Tổng quan Đợt Khóa Luận',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF1E293B)),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Dashboard Tổng quan Nhanh',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF1E293B)),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFD1FAE5),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.sync_rounded, size: 12, color: Color(0xFF047857)),
+                          SizedBox(width: 4),
+                          Text('Đồng bộ tự động', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF047857))),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 12),
+
+                // Lưới 4 ô chỉ số nghiệp vụ chính
                 Row(
                   children: [
                     Expanded(
@@ -113,9 +145,54 @@ class ManagerHomeView extends StatelessWidget {
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: _buildMetricTile('88%', 'Tỷ lệ nộp BC tuần', Icons.trending_up_rounded, const Color(0xFF7C3AED), const Color(0xFFF5F3FF)),
+                      child: _buildMetricTile('14%', 'Tỷ lệ nộp trễ (23:59)', Icons.assignment_late_rounded, const Color(0xFFEA580C), const Color(0xFFFFEDD5)),
                     ),
                   ],
+                ),
+
+                const SizedBox(height: 16),
+
+                // NÚT TRUY CẬP SỐ LIỆU TỔNG HỢP CHI TIẾT THEO LUỒNG LOGIC
+                Container(
+                  width: double.infinity,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF1E3A8A), Color(0xFF2563EB)],
+                    ),
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF1D4ED8).withOpacity(0.35),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.transparent,
+                      shadowColor: Colors.transparent,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => ManagerDetailedStatsScreen(user: user),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.bar_chart_rounded, color: Colors.white, size: 22),
+                    label: const Text(
+                      'XEM SỐ LIỆU TỔNG HỢP CHI TIẾT',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -123,7 +200,7 @@ class ManagerHomeView extends StatelessWidget {
 
           const SizedBox(height: 20),
 
-          // 3. SỐ LIỆU TỔNG HỢP TIẾN ĐỘ
+          // 3. TIẾN ĐỘ THỰC HIỆN ĐỢT KHÓA LUẬN
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Container(
@@ -143,20 +220,22 @@ class ManagerHomeView extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Số liệu Tổng hợp Đợt Hiện tại',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF1E293B)),
+                    'Tỷ Lệ Nghiệp Vụ Khóa Luận (HUIT)',
+                    style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w800, color: Color(0xFF1E293B)),
                   ),
                   const SizedBox(height: 14),
-                  _buildProgressRow('Tiến độ đề tài được phê duyệt', 0.92, '92%', const Color(0xFF10B981)),
+                  _buildProgressRow('Tỷ lệ đề tài được BCN duyệt', 0.92, '92% (114/124)', const Color(0xFF10B981)),
                   const SizedBox(height: 12),
-                  _buildProgressRow('Tỷ lệ nhóm sinh viên đã ghép', 0.85, '85%', const Color(0xFF0284C7)),
+                  _buildProgressRow('Tỷ lệ nhóm sinh viên đã ghép đủ', 0.85, '85% (106/124 nhóm)', const Color(0xFF0284C7)),
                   const SizedBox(height: 12),
-                  _buildProgressRow('Tiến độ nộp sản phẩm cuối kỳ', 0.40, '40%', const Color(0xFFF59E0B)),
+                  _buildProgressRow('Tỷ lệ sinh viên nộp báo cáo đúng hạn (< 23:59)', 0.82, '82%', const Color(0xFF059669)),
+                  const SizedBox(height: 12),
+                  _buildProgressRow('Tỷ lệ sinh viên nộp trễ hạn (> 23:59)', 0.14, '14%', const Color(0xFFEA580C)),
                 ],
               ),
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 100),
         ],
       ),
     );
@@ -169,8 +248,8 @@ class ManagerHomeView extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(title, style: const TextStyle(fontSize: 13, color: Color(0xFF475569), fontWeight: FontWeight.w500)),
-            Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: color)),
+            Text(title, style: const TextStyle(fontSize: 12.5, color: Color(0xFF475569), fontWeight: FontWeight.w600)),
+            Text(label, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: color)),
           ],
         ),
         const SizedBox(height: 6),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../auth/model/user_model.dart';
+import '../tasks/view/student_task_deadline_screen.dart';
 
 class StudentScheduleView extends StatelessWidget {
   final UserModel user;
@@ -41,7 +42,7 @@ class StudentScheduleView extends StatelessWidget {
                 ),
                 SizedBox(height: 4),
                 Text(
-                  'Kế hoạch 12 tuần làm việc & Mốc thời gian quan trọng',
+                  'Kế hoạch 12 tuần làm việc & Mốc thời gian 23:59',
                   style: TextStyle(
                     color: Colors.white70,
                     fontSize: 13,
@@ -49,6 +50,67 @@ class StudentScheduleView extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // NÚT TRUY CẬP NHẮC VIỆC & DEADLINE 23:59
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEFF6FF),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFBFDBFE)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0072E8),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.alarm_on_rounded, color: Colors.white, size: 22),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Theo dõi Deadline & Nộp báo cáo',
+                          style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          'Mốc 23:59: Tự động phân loại Đúng hạn / Nộp trễ',
+                          style: TextStyle(fontSize: 11.5, color: Color(0xFF475569)),
+                        ),
+                      ],
+                    ),
+                  ),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF0072E8),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      elevation: 0,
+                    ),
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => StudentTaskDeadlineScreen(user: user),
+                        ),
+                      );
+                    },
+                    child: const Text('CHI TIẾT', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800)),
+                  ),
+                ],
+              ),
             ),
           ),
 
@@ -61,7 +123,7 @@ class StudentScheduleView extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Kế Hoạch Báo Cáo Định Kỳ',
+                  'Kế Hoạch Báo Cáo Định Kỳ (12 Tuần)',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
@@ -73,7 +135,7 @@ class StudentScheduleView extends StatelessWidget {
                 _buildTimelineItem(
                   week: 'Tuần 1 - 2',
                   title: 'Khởi động & Xác định yêu cầu đề tài',
-                  time: '15/09 - 28/09/2026',
+                  time: '15/09 - 28/09/2026 (Hạn 23:59)',
                   status: 'Đã hoàn thành',
                   statusColor: const Color(0xFF10B981),
                   statusBg: const Color(0xFFD1FAE5),
@@ -82,7 +144,7 @@ class StudentScheduleView extends StatelessWidget {
                 _buildTimelineItem(
                   week: 'Tuần 3 - 4',
                   title: 'Phân tích thiết kế hệ thống & CSDL',
-                  time: '29/09 - 12/10/2026',
+                  time: '29/09 - 12/10/2026 (Hạn 23:59)',
                   status: 'Đã duyệt',
                   statusColor: const Color(0xFF10B981),
                   statusBg: const Color(0xFFD1FAE5),
@@ -91,7 +153,7 @@ class StudentScheduleView extends StatelessWidget {
                 _buildTimelineItem(
                   week: 'Tuần 5 (Hiện tại)',
                   title: 'Xây dựng Mobile App & Kết nối API Backend',
-                  time: '13/10 - 19/10/2026',
+                  time: '13/10 - 19/10/2026 (Hạn 23:59)',
                   status: 'Đang thực hiện',
                   statusColor: const Color(0xFF0284C7),
                   statusBg: const Color(0xFFE0F2FE),
@@ -100,7 +162,7 @@ class StudentScheduleView extends StatelessWidget {
                 _buildTimelineItem(
                   week: 'Tuần 6 - 8',
                   title: 'Hoàn thiện chức năng & Kiểm thử',
-                  time: '20/10 - 09/11/2026',
+                  time: '20/10 - 09/11/2026 (Hạn 23:59)',
                   status: 'Sắp diễn ra',
                   statusColor: const Color(0xFF64748B),
                   statusBg: const Color(0xFFF1F5F9),

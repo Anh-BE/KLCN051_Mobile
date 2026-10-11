@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../auth/model/user_model.dart';
+import '../tasks/view/lecturer_manage_tasks_screen.dart';
 import '../topic/view/lecturer_topic_list_screen.dart';
 
 class LecturerHomeView extends StatelessWidget {
@@ -136,10 +137,17 @@ class LecturerHomeView extends StatelessWidget {
                       ),
                       _buildQuickAction(
                         icon: Icons.assignment_outlined,
-                        label: 'Xem báo cáo tuần',
+                        label: 'Giao việc & Deadline',
                         bgColor: const Color(0xFFEFF6FF),
                         iconColor: const Color(0xFF2563EB),
-                        onTap: () {},
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => LecturerManageTasksScreen(user: user),
+                            ),
+                          );
+                        },
                       ),
                       _buildQuickAction(
                         icon: Icons.rate_review_outlined,
@@ -156,6 +164,93 @@ class LecturerHomeView extends StatelessWidget {
                         onTap: () {},
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 18),
+
+                  // THẺ LỚN NỔI BẬT: QUẢN LÝ KẾ HOẠCH & THIẾT LẬP DEADLINE TUẦN (MỐC 23:59)
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF0F766E), Color(0xFF0D9488)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF0D9488).withOpacity(0.3),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Icon(Icons.alarm_add_rounded, color: Colors.white, size: 24),
+                            ),
+                            const SizedBox(width: 12),
+                            const Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Kế Hoạch Báo Cáo & Deadline',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  SizedBox(height: 2),
+                                  Text(
+                                    'Tự động thiết lập mốc 23:59 • Gắn cờ Nộp trễ',
+                                    style: TextStyle(fontSize: 12, color: Colors.white70),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 42,
+                          child: ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              foregroundColor: const Color(0xFF0F766E),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              elevation: 0,
+                            ),
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => LecturerManageTasksScreen(user: user),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
+                            label: const Text(
+                              'GIAO VIỆC & THIẾT LẬP DEADLINE TUẦN',
+                              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -192,6 +287,14 @@ class LecturerHomeView extends StatelessWidget {
                     'Báo cáo chờ duyệt',
                     Icons.pending_actions_rounded,
                     const Color(0xFFF59E0B),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => LecturerManageTasksScreen(user: user),
+                        ),
+                      );
+                    },
                   ),
                 ),
               ],
