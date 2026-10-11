@@ -50,13 +50,20 @@ class ApiEndpoints {
   static String notificationMarkAsRead(int id) => '/Notifications/$id/read';
   static const String notificationMarkAllAsRead = '/Notifications/read-all';
 
+  // --- Đợt đăng ký & Thống kê ---
   static const String registrationPeriods = '/RegistrationPeriods';
   static const String myRegistrationPeriod = '/RegistrationPeriods/my-period';
   static const String studentsWithoutGroup = '/ThongKeBaoCao/chi-tiet-sv-chua-nhom';
   static const String reportGroupList = '/ThongKeBaoCao/chi-tiet-nhom';
   static const String unassignedGroups = '/PhanCongDeTai/Groups';
 
-  // --- Báo cáo tiến độ (Progress Report) ---
+  // --- Giảng viên (Ra đề tài & Đánh giá tiến độ) ---
+  static const String raDeTaiHistory = '/RaDeTai/history';
+  static const String lecturerThesesProgress = '/BaoCaoTienDo/lecturer/theses';
+  static const String thesisTimeline = '/BaoCaoTienDo/thesis';
+  static const String reportFeedback = '/BaoCaoTienDo/feedback';
+
+  // --- Báo cáo tiến độ Sinh viên (Progress Report) ---
   static const String studentMyThesisProgress = '/ProgressReport/student/my-thesis';
   static const String submitProgressReport = '/ProgressReport/submit';
   static String unsubmitProgressReport(int reportId) => '/ProgressReport/unsubmit/$reportId';

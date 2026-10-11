@@ -4,6 +4,9 @@
 *.pyc
 *.swp
 .DS_Store
+.vs/
+*.slnx
+
 .atom/
 .build/
 .buildlog/

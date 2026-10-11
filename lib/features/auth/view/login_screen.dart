@@ -366,34 +366,49 @@ class _LoginScreenState extends State<LoginScreen> {
                                   Row(
                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
-                                      Row(
-                                        children: [
-                                          SizedBox(
-                                            height: 20,
-                                            width: 20,
-                                            child: Checkbox(
-                                              value: _rememberMe,
-                                              activeColor: const Color(0xFF0284C7),
-                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                                              side: const BorderSide(color: Color(0xFFCBD5E1), width: 1.5),
-                                              onChanged: (val) {
-                                                setState(() {
-                                                  _rememberMe = val ?? false;
-                                                });
-                                              },
-                                            ),
+                                      Flexible(
+                                        child: InkWell(
+                                          onTap: () {
+                                            setState(() {
+                                              _rememberMe = !_rememberMe;
+                                            });
+                                          },
+                                          borderRadius: BorderRadius.circular(4),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              SizedBox(
+                                                height: 20,
+                                                width: 20,
+                                                child: Checkbox(
+                                                  value: _rememberMe,
+                                                  activeColor: const Color(0xFF0284C7),
+                                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                                                  side: const BorderSide(color: Color(0xFFCBD5E1), width: 1.5),
+                                                  onChanged: (val) {
+                                                    setState(() {
+                                                      _rememberMe = val ?? false;
+                                                    });
+                                                  },
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Flexible(
+                                                child: Text(
+                                                  tr('remember_me'),
+                                                  overflow: TextOverflow.ellipsis,
+                                                  style: const TextStyle(
+                                                    color: Color(0xFF475569),
+                                                    fontSize: 13,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
                                           ),
-                                          const SizedBox(width: 8),
-                                          Text(
-                                            tr('remember_me'),
-                                            style: const TextStyle(
-                                              color: Color(0xFF475569),
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                          ),
-                                        ],
+                                        ),
                                       ),
+                                      const SizedBox(width: 8),
                                       TextButton(
                                         onPressed: () {},
                                         style: TextButton.styleFrom(

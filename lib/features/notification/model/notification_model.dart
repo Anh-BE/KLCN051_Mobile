@@ -1,51 +1,52 @@
-class NotificationModel {
+class AppNotification {
   final int notificationId;
   final int? userId;
   final String title;
   final String message;
-  final String? type;
-  final String? category;
+  final String type; // info, success, warning, danger
+  final String category; // thesis_approval, thesis_registration, weekly_report, general
   final String? actionUrl;
   final bool isRead;
-  final DateTime? createdAt;
+  final DateTime createdAt;
   final String timeAgo;
 
-  NotificationModel({
+  AppNotification({
     required this.notificationId,
     this.userId,
     required this.title,
     required this.message,
-    this.type,
-    this.category,
+    this.type = 'info',
+    this.category = 'general',
     this.actionUrl,
     this.isRead = false,
-    this.createdAt,
-    this.timeAgo = 'Vừa xong',
-  });
+    DateTime? createdAt,
+    this.timeAgo = '',
+  }) : createdAt = createdAt ?? DateTime.now();
 
-  factory NotificationModel.fromJson(Map<String, dynamic> json) {
-    DateTime? parsedDate;
-    if (json['createdAt'] != null) {
-      try {
-        parsedDate = DateTime.parse(json['createdAt'].toString());
-      } catch (_) {}
+  factory AppNotification.fromJson(Map<dynamic, dynamic> json) {
+    int parseId(dynamic val) {
+      if (val is int) return val;
+      if (val is String) return int.tryParse(val) ?? 0;
+      return 0;
     }
 
-    return NotificationModel(
-      notificationId: json['notificationId'] ?? json['id'] ?? 0,
-      userId: json['userId'],
-      title: json['title'] ?? 'Thông báo',
-      message: json['message'] ?? '',
-      type: json['type']?.toString().toLowerCase(),
-      category: json['category']?.toString().toLowerCase(),
-      actionUrl: json['actionUrl'],
-      isRead: json['isRead'] ?? false,
-      createdAt: parsedDate,
-      timeAgo: json['timeAgo']?.toString() ?? _calculateTimeAgo(parsedDate),
+    return AppNotification(
+      notificationId: parseId(json['notificationId'] ?? json['id']),
+      userId: parseId(json['userId']),
+      title: json['title']?.toString() ?? 'Thông báo',
+      message: json['message']?.toString() ?? '',
+      type: json['type']?.toString().toLowerCase() ?? 'info',
+      category: json['category']?.toString().toLowerCase() ?? 'general',
+      actionUrl: json['actionUrl']?.toString(),
+      isRead: json['isRead'] == true,
+      createdAt: json['createdAt'] != null
+          ? DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now()
+          : DateTime.now(),
+      timeAgo: json['timeAgo']?.toString() ?? '',
     );
   }
 
-  NotificationModel copyWith({
+  AppNotification copyWith({
     int? notificationId,
     int? userId,
     String? title,
@@ -57,7 +58,7 @@ class NotificationModel {
     DateTime? createdAt,
     String? timeAgo,
   }) {
-    return NotificationModel(
+    return AppNotification(
       notificationId: notificationId ?? this.notificationId,
       userId: userId ?? this.userId,
       title: title ?? this.title,
@@ -70,14 +71,6 @@ class NotificationModel {
       timeAgo: timeAgo ?? this.timeAgo,
     );
   }
-
-  static String _calculateTimeAgo(DateTime? date) {
-    if (date == null) return 'Vừa xong';
-    final diff = DateTime.now().difference(date);
-    if (diff.inSeconds < 60) return 'Vừa xong';
-    if (diff.inMinutes < 60) return '${diff.inMinutes} phút trước';
-    if (diff.inHours < 24) return '${diff.inHours} giờ trước';
-    if (diff.inDays < 7) return '${diff.inDays} ngày trước';
-    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
-  }
 }
+
+typedef NotificationModel = AppNotification;

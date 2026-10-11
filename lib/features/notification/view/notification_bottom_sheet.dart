@@ -231,8 +231,8 @@ class _NotificationBottomSheetState extends State<NotificationBottomSheet> {
     Color iconColor = const Color(0xFF0072E8);
     IconData icon = Icons.notifications_rounded;
 
-    final type = item.type ?? '';
-    final category = item.category ?? '';
+    final type = item.type;
+    final category = item.category;
 
     if (type.contains('success') || category.contains('accepted')) {
       iconBg = const Color(0xFFE8FDF4);

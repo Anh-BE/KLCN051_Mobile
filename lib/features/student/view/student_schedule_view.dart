@@ -8,6 +8,7 @@ import '../../auth/model/user_model.dart';
 import '../../notification/view/notification_bell_button.dart';
 import '../progress/logic/student_progress_service.dart';
 import '../progress/model/student_progress_model.dart';
+import '../tasks/view/student_task_deadline_screen.dart';
 
 class StudentScheduleView extends StatefulWidget {
   final UserModel user;
@@ -540,6 +541,11 @@ class _StudentScheduleViewState extends State<StudentScheduleView> {
             // 1. HEADER DẠNG VIÊN THUỐC NỔI
             _buildHeaderPill(context),
 
+            const SizedBox(height: 14),
+
+            // NÚT TRUY CẬP NHẮC VIỆC & DEADLINE 23:59
+            _buildDeadlineTrackerBanner(context, colors),
+
             const SizedBox(height: 16),
 
             // 2. NỘI DUNG CHÍNH (LOADING / EMPTY / DỮ LIỆU THẬT)
@@ -676,6 +682,73 @@ class _StudentScheduleViewState extends State<StudentScheduleView> {
             ),
           ),
           const NotificationBellButton(),
+        ],
+      ),
+    );
+  }
+
+  // ==========================================
+  // NÚT TRUY CẬP THEO DÕI DEADLINE 23:59
+  // ==========================================
+  Widget _buildDeadlineTrackerBanner(BuildContext context, AppColors colors) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: colors.isDark ? const Color(0xFF1E222A) : const Color(0xFFEFF6FF),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colors.isDark ? const Color(0xFF2E333D) : const Color(0xFFBFDBFE)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0072E8),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.alarm_on_rounded, color: Colors.white, size: 22),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Theo dõi Deadline & Nộp báo cáo',
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w800,
+                    color: colors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Mốc 23:59: Tự động phân loại Đúng hạn / Nộp trễ',
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    color: colors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF0072E8),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              elevation: 0,
+            ),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => StudentTaskDeadlineScreen(user: widget.user),
+                ),
+              );
+            },
+            child: const Text('CHI TIẾT', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800)),
+          ),
         ],
       ),
     );
