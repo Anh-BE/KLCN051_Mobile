@@ -1,3 +1,5 @@
+import '../../review_report/model/weekly_report_model.dart';
+
 class LecturerThesisModel {
   final int thesisId;
   final String thesisTitle;
@@ -65,6 +67,40 @@ class LecturerThesisModel {
       gvhd: json['gvhd'] ?? json['Gvhd'] ?? '',
       registeredGroups: groups,
       outlineObjectives: objectives,
+    );
+  }
+
+  // Getters trạng thái chuẩn
+  bool get isApproved => status.toLowerCase() == 'approved' || status.toLowerCase() == 'daduyet';
+  bool get isPending =>
+      status.toLowerCase().contains('pending') ||
+      status.toLowerCase().contains('choduyet') ||
+      status.toLowerCase().contains('wait');
+  bool get isRejected =>
+      status.toLowerCase().contains('reject') ||
+      status.toLowerCase().contains('tuchoi');
+  bool get hasGroup => registeredGroups.isNotEmpty && registeredGroups.first.memberCount > 0;
+
+  LecturerThesisProgressModel toProgressModel() {
+    final group = registeredGroups.isNotEmpty ? registeredGroups.first : null;
+    final leader = (group != null && group.members.isNotEmpty) ? group.members.first : null;
+    return LecturerThesisProgressModel(
+      thesisId: thesisId,
+      thesisCode: periodCode.isNotEmpty ? periodCode : 'DT$thesisId',
+      thesisTitle: thesisTitle,
+      groupId: group?.groupId,
+      groupName: group?.groupName ?? 'Chưa ghép nhóm',
+      leaderId: leader?.studentId,
+      leaderCode: leader?.studentCode ?? '',
+      leaderName: leader?.fullName ?? 'Chưa có trưởng nhóm',
+      leaderEmail: leader?.email ?? '',
+      leaderPhone: leader?.phoneNumber ?? '',
+      memberCount: group?.memberCount ?? 0,
+      totalWeeks: 12,
+      submittedWeeksCount: 0,
+      approvedWeeksCount: 0,
+      pendingWeeksCount: 0,
+      progressPercentage: 0.0,
     );
   }
 }
