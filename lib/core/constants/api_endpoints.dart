@@ -18,4 +18,7 @@ class ApiEndpoints {
 
   static const String login = '/Auth/login';
   static const String theses = '/Theses';
+  static const String lecturerThesesProgress = '/BaoCaoTienDo/lecturer/theses';
+  static const String thesisTimeline = '/BaoCaoTienDo/thesis';
+  static const String reportFeedback = '/BaoCaoTienDo/feedback';
 }

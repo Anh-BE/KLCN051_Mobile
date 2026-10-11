@@ -104,7 +104,7 @@ class _HuitLoadingState extends State<HuitLoading> with TickerProviderStateMixin
                     child: Image.network(
                       _logoUrl,
                       fit: BoxFit.contain,
-                      errorBuilder: (_, __, ___) => const Center(
+                      errorBuilder: (context, error, stackTrace) => const Center(
                         child: Text(
                           'HUIT',
                           style: TextStyle(

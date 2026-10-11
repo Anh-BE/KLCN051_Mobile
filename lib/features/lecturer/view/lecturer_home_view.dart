@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../auth/model/user_model.dart';
+import '../review_report/view/lecturer_weekly_report_list_screen.dart';
 import '../topic/view/lecturer_topic_list_screen.dart';
 
 class LecturerHomeView extends StatelessWidget {
@@ -139,14 +140,28 @@ class LecturerHomeView extends StatelessWidget {
                         label: 'Xem báo cáo tuần',
                         bgColor: const Color(0xFFEFF6FF),
                         iconColor: const Color(0xFF2563EB),
-                        onTap: () {},
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => LecturerWeeklyReportListScreen(user: user),
+                            ),
+                          );
+                        },
                       ),
                       _buildQuickAction(
                         icon: Icons.rate_review_outlined,
                         label: 'Phản hồi tiến độ',
                         bgColor: const Color(0xFFFFF7ED),
                         iconColor: const Color(0xFFEA580C),
-                        onTap: () {},
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => LecturerWeeklyReportListScreen(user: user),
+                            ),
+                          );
+                        },
                       ),
                       _buildQuickAction(
                         icon: Icons.edit_note_rounded,
@@ -192,6 +207,14 @@ class LecturerHomeView extends StatelessWidget {
                     'Báo cáo chờ duyệt',
                     Icons.pending_actions_rounded,
                     const Color(0xFFF59E0B),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => LecturerWeeklyReportListScreen(user: user),
+                        ),
+                      );
+                    },
                   ),
                 ),
               ],
