@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../../../core/localization/app_language_service.dart';
 import '../../../../core/widgets/huit_loading.dart';
 import '../../../auth/model/user_model.dart';
+import '../../group/logic/student_group_service.dart';
+import '../../group/model/student_group_model.dart';
 import '../logic/student_topic_service.dart';
 import '../model/thesis_topic_model.dart';
 
@@ -22,6 +24,8 @@ class _StudentTopicListScreenState extends State<StudentTopicListScreen> {
   String _selectedDirection = 'Hướng đề tài';
   List<ThesisTopicModel> _topics = [];
   bool _isLoading = true;
+  StudentGroupModel? _myGroup;
+  bool _isLeader = false;
 
   late List<String> _lecturers;
   late List<String> _directions;
@@ -59,9 +63,20 @@ class _StudentTopicListScreenState extends State<StudentTopicListScreen> {
       currentUser: widget.user,
     );
 
+    StudentGroupModel? myGroup;
+    bool isLeader = false;
+    try {
+      myGroup = await StudentGroupService().getMyGroup(widget.user);
+      if (myGroup != null) {
+        isLeader = myGroup.isUserLeader(widget.user);
+      }
+    } catch (_) {}
+
     if (mounted) {
       setState(() {
         _topics = data;
+        _myGroup = myGroup;
+        _isLeader = isLeader;
         _isLoading = false;
       });
     }
@@ -303,35 +318,101 @@ class _StudentTopicListScreenState extends State<StudentTopicListScreen> {
             ),
 
             // Nút Đăng ký ở dưới đáy Modal
-            Container(
-              padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                border: Border(top: BorderSide(color: Color(0xFFF1F5F9))),
-              ),
-              child: SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: topic.isMyTopic
-                        ? const Color(0xFFEF4444)
-                        : (topic.isOpen ? _primaryBlue : const Color(0xFF94A3B8)),
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            Builder(
+              builder: (ctx) {
+                final isMy = topic.isRegisteredByMyGroup(_myGroup?.id);
+                final isTakenByOther = topic.isRegisteredByOther(_myGroup?.id);
+                final hasExistingTopic = _myGroup != null &&
+                    _myGroup!.topicName != null &&
+                    _myGroup!.topicName!.trim().isNotEmpty &&
+                    !isMy;
+
+                Color btnColor;
+                String btnText;
+                bool btnEnabled;
+                IconData? btnIcon;
+
+                if (isMy) {
+                  btnColor = const Color(0xFF10B981);
+                  btnText = 'ĐÃ ĐĂNG KÝ (CHỜ GVHD DUYỆT)';
+                  btnEnabled = false;
+                  btnIcon = Icons.check_circle_outline_rounded;
+                } else if (isTakenByOther) {
+                  btnColor = const Color(0xFF94A3B8);
+                  btnText = 'ĐỀ TÀI ĐÃ CÓ NHÓM ĐĂNG KÝ';
+                  btnEnabled = false;
+                  btnIcon = Icons.lock_outline_rounded;
+                } else if (!topic.isOpen) {
+                  btnColor = const Color(0xFF94A3B8);
+                  btnText = 'ĐỀ TÀI ĐÃ ĐÓNG';
+                  btnEnabled = false;
+                  btnIcon = Icons.lock_outline_rounded;
+                } else if (_myGroup == null) {
+                  btnColor = const Color(0xFF64748B);
+                  btnText = 'CẦN CÓ NHÓM ĐỂ ĐĂNG KÝ';
+                  btnEnabled = false;
+                  btnIcon = Icons.group_off_outlined;
+                } else if (!_isLeader) {
+                  btnColor = const Color(0xFF64748B);
+                  btnText = 'CHỈ DÀNH CHO NHÓM TRƯỞNG';
+                  btnEnabled = false;
+                  btnIcon = Icons.lock_outline_rounded;
+                } else if (hasExistingTopic) {
+                  btnColor = const Color(0xFF64748B);
+                  btnText = 'NHÓM ĐÃ ĐĂNG KÝ ĐỀ TÀI KHÁC';
+                  btnEnabled = false;
+                  btnIcon = Icons.check_circle_outline_rounded;
+                } else {
+                  btnColor = _primaryBlue;
+                  btnText = 'ĐĂNG KÝ ĐỀ TÀI NÀY (TRƯỞNG NHÓM)';
+                  btnEnabled = true;
+                  btnIcon = Icons.assignment_turned_in_rounded;
+                }
+
+                return Container(
+                  padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    border: Border(top: BorderSide(color: Color(0xFFF1F5F9))),
                   ),
-                  onPressed: !topic.isOpen && !topic.isMyTopic
-                      ? null
-                      : () {
-                          Navigator.pop(ctx);
-                          _handleTopicAction(topic);
-                        },
-                  child: Text(
-                    topic.isMyTopic ? 'HỦY ĐĂNG KÝ ĐỀ TÀI' : (topic.isOpen ? 'ĐĂNG KÝ ĐỀ TÀI NÀY' : 'ĐỀ TÀI ĐÃ ĐÓNG'),
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: btnColor,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                      onPressed: btnEnabled
+                          ? () {
+                              Navigator.pop(ctx);
+                              _handleTopicAction(topic);
+                            }
+                          : null,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(btnIcon, size: 18, color: Colors.white),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              btnText,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13.5,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
-              ),
+                );
+              },
             ),
           ],
         ),
@@ -653,20 +734,49 @@ class _StudentTopicListScreenState extends State<StudentTopicListScreen> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3.5),
-                      decoration: BoxDecoration(
-                        color: topic.isOpen ? _tagBgGreen : const Color(0xFFF1F5F9),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        topic.statusDisplay,
-                        style: TextStyle(
-                          color: topic.isOpen ? _textGreen : _textSecondary,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12,
-                        ),
-                      ),
+                    Builder(
+                      builder: (_) {
+                        final isMy = topic.isRegisteredByMyGroup(_myGroup?.id);
+                        final isTakenByOther = topic.isRegisteredByOther(_myGroup?.id);
+
+                        Color tagBg;
+                        Color tagText;
+                        String tagLabel;
+
+                        if (isMy) {
+                          tagBg = const Color(0xFFEEF5FE);
+                          tagText = const Color(0xFF0072E8);
+                          tagLabel = 'ĐÃ ĐĂNG KÝ';
+                        } else if (isTakenByOther) {
+                          tagBg = const Color(0xFFFFF7ED);
+                          tagText = const Color(0xFFEA580C);
+                          tagLabel = 'ĐÃ CÓ NHÓM';
+                        } else if (topic.isOpen) {
+                          tagBg = _tagBgGreen;
+                          tagText = _textGreen;
+                          tagLabel = 'MỞ ĐĂNG KÝ';
+                        } else {
+                          tagBg = const Color(0xFFF1F5F9);
+                          tagText = _textSecondary;
+                          tagLabel = 'ĐÃ ĐÓNG';
+                        }
+
+                        return Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3.5),
+                          decoration: BoxDecoration(
+                            color: tagBg,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            tagLabel,
+                            style: TextStyle(
+                              color: tagText,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12,
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -792,51 +902,97 @@ class _StudentTopicListScreenState extends State<StudentTopicListScreen> {
   }
 
   Future<void> _handleTopicAction(ThesisTopicModel topic) async {
-    if (topic.isMyTopic) {
-      final confirm = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text('Hủy đăng ký đề tài', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17)),
-          content: Text('Bạn có chắc muốn hủy đăng ký đề tài "${topic.title}" không?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: Text(tr('cancel'), style: const TextStyle(color: Color(0xFF64748B))),
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Xác nhận đăng ký đề tài', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17)),
+        content: Text(
+          'Bạn có chắc chắn muốn đăng ký đề tài "${topic.title}" cho nhóm "${_myGroup?.name ?? ''}" không?\n\n(Lưu ý: Sau khi đăng ký, đề tài sẽ được chuyển sang trạng thái chờ Giảng viên hướng dẫn phê duyệt).',
+          style: const TextStyle(fontSize: 13.5, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(tr('cancel'), style: const TextStyle(color: Color(0xFF64748B))),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _primaryBlue,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFEF4444),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(tr('confirm'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      final success = await _topicService.registerTopic(
+        topicId: topic.id,
+        user: widget.user,
+      );
+      if (mounted) {
+        _showSnackBar(
+          success
+              ? 'Đăng ký đề tài thành công! Vui lòng chờ Giảng viên hướng dẫn duyệt.'
+              : 'Đăng ký đề tài thất bại.',
+          isError: !success,
+        );
+        StudentGroupService().invalidateGroupCache();
+        _fetchTopics();
+      }
+    } catch (e) {
+      if (mounted) {
+        final errorMsg = e.toString().replaceAll('Exception: ', '');
+        _showRegistrationErrorDialog(errorMsg);
+      }
+    }
+  }
+
+  void _showRegistrationErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF2F2),
+                borderRadius: BorderRadius.circular(10),
               ),
-              onPressed: () => Navigator.pop(ctx, true),
-              child: Text(tr('confirm'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              child: const Icon(Icons.warning_amber_rounded, color: Color(0xFFEF4444), size: 24),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'Chưa đủ điều kiện đăng ký',
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+              ),
             ),
           ],
         ),
-      );
-
-      if (confirm == true) {
-        final success = await _topicService.cancelTopicRegistration(
-          topicId: topic.id,
-          user: widget.user,
-        );
-        if (mounted) {
-          _showSnackBar(success ? 'Đã hủy đăng ký đề tài thành công!' : 'Hủy đăng ký thất bại.');
-          _fetchTopics();
-        }
-      }
-      return;
-    }
-
-    final success = await _topicService.registerTopic(
-      topicId: topic.id,
-      user: widget.user,
+        content: Text(
+          message,
+          style: const TextStyle(fontSize: 13.5, color: Color(0xFF334155), height: 1.4),
+        ),
+        actions: [
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _primaryBlue,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Đã hiểu', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
     );
-    if (mounted) {
-      _showSnackBar(success ? 'Đăng ký đề tài thành công!' : 'Đăng ký thất bại.', isError: !success);
-      _fetchTopics();
-    }
   }
 
   void _showSnackBar(String msg, {bool isError = false}) {

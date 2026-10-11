@@ -104,7 +104,7 @@ class _HuitLoadingState extends State<HuitLoading> with TickerProviderStateMixin
                     child: Image.network(
                       _logoUrl,
                       fit: BoxFit.contain,
-                      errorBuilder: (_, __, ___) => const Center(
+                      errorBuilder: (context, error, stackTrace) => const Center(
                         child: Text(
                           'HUIT',
                           style: TextStyle(
@@ -126,10 +126,12 @@ class _HuitLoadingState extends State<HuitLoading> with TickerProviderStateMixin
           const SizedBox(height: 14),
           Text(
             widget.message ?? 'Đang tải dữ liệu...',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: Color(0xFF0072E8),
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? const Color(0xFF38BDF8)
+                  : const Color(0xFF0072E8),
               letterSpacing: 0.2,
             ),
           ),

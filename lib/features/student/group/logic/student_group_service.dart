@@ -1,3 +1,8 @@
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
+import '../../../../core/constants/api_endpoints.dart';
+import '../../../../core/utils/storage_service.dart';
 import '../../../auth/model/user_model.dart';
 import '../model/student_group_model.dart';
 
@@ -6,253 +11,486 @@ class StudentGroupService {
   factory StudentGroupService() => _instance;
   StudentGroupService._internal();
 
-  // Danh sách Mock Data nhóm Khóa luận chuẩn thực tế Khoa CNTT - HUIT
-  final List<StudentGroupModel> _mockGroups = [
-    StudentGroupModel(
-      id: '1',
-      code: 'N01',
-      name: 'Nhóm Nghiên cứu Mobile App HUIT',
-      leaderName: 'Nguyễn Văn An',
-      leaderCode: '2001210123',
-      leaderPhone: '0987 654 321',
-      leaderEmail: '2001210123@huit.edu.vn',
-      major: 'Công nghệ phần mềm',
-      currentMembers: 2,
-      maxMembers: 3,
-      status: 'recruiting',
-      hasRequested: false,
-      members: [
-        GroupMemberModel(
-          id: 'm1',
-          fullName: 'Nguyễn Văn An',
-          studentCode: '2001210123',
-          role: 'leader',
-          email: '2001210123@huit.edu.vn',
-          phone: '0987 654 321',
-        ),
-        GroupMemberModel(
-          id: 'm2',
-          fullName: 'Trần Thị Mai',
-          studentCode: '2001210456',
-          role: 'member',
-          email: '2001210456@huit.edu.vn',
-          phone: '0912 345 678',
-        ),
-      ],
-    ),
-    StudentGroupModel(
-      id: '2',
-      code: 'N02',
-      name: 'Nhóm Phát triển Hệ thống Web Cloud',
-      leaderName: 'Lê Hoàng Nam',
-      leaderCode: '2001210789',
-      leaderPhone: '0903 123 456',
-      leaderEmail: '2001210789@huit.edu.vn',
-      major: 'Hệ thống thông tin',
-      currentMembers: 3,
-      maxMembers: 3,
-      status: 'full',
-      hasRequested: false,
-      members: [
-        GroupMemberModel(
-          id: 'm3',
-          fullName: 'Lê Hoàng Nam',
-          studentCode: '2001210789',
-          role: 'leader',
-          email: '2001210789@huit.edu.vn',
-          phone: '0903 123 456',
-        ),
-        GroupMemberModel(
-          id: 'm4',
-          fullName: 'Phạm Minh Tuấn',
-          studentCode: '2001210999',
-          role: 'member',
-          email: '2001210999@huit.edu.vn',
-        ),
-        GroupMemberModel(
-          id: 'm5',
-          fullName: 'Võ Quốc Bảo',
-          studentCode: '2001210888',
-          role: 'member',
-          email: '2001210888@huit.edu.vn',
-        ),
-      ],
-    ),
-    StudentGroupModel(
-      id: '3',
-      code: 'N03',
-      name: 'Nhóm IoT & Thiết bị thông minh',
-      leaderName: 'Đặng Quốc Huy',
-      leaderCode: '2001210333',
-      leaderPhone: '0978 999 888',
-      leaderEmail: '2001210333@huit.edu.vn',
-      major: 'Mạng máy tính & TT',
-      currentMembers: 1,
-      maxMembers: 3,
-      status: 'recruiting',
-      hasRequested: false,
-      members: [
-        GroupMemberModel(
-          id: 'm6',
-          fullName: 'Đặng Quốc Huy',
-          studentCode: '2001210333',
-          role: 'leader',
-          email: '2001210333@huit.edu.vn',
-          phone: '0978 999 888',
-        ),
-      ],
-    ),
-    StudentGroupModel(
-      id: '4',
-      code: 'N04',
-      name: 'Nhóm An toàn thông tin & Web Security',
-      leaderName: 'Hoàng Văn Khánh',
-      leaderCode: '2001210555',
-      leaderPhone: '0933 777 666',
-      leaderEmail: '2001210555@huit.edu.vn',
-      major: 'An toàn thông tin',
-      currentMembers: 2,
-      maxMembers: 3,
-      status: 'recruiting',
-      hasRequested: false,
-      members: [
-        GroupMemberModel(
-          id: 'm7',
-          fullName: 'Hoàng Văn Khánh',
-          studentCode: '2001210555',
-          role: 'leader',
-          email: '2001210555@huit.edu.vn',
-          phone: '0933 777 666',
-        ),
-        GroupMemberModel(
-          id: 'm8',
-          fullName: 'Đỗ Thùy Linh',
-          studentCode: '2001210666',
-          role: 'member',
-          email: '2001210666@huit.edu.vn',
-        ),
-      ],
-    ),
-    StudentGroupModel(
-      id: '5',
-      code: 'N05',
-      name: 'Nhóm Trí tuệ nhân tạo & Data Science',
-      leaderName: 'Bùi Đức Trọng',
-      leaderCode: '2001210222',
-      leaderPhone: '0918 555 444',
-      leaderEmail: '2001210222@huit.edu.vn',
-      major: 'Khoa học dữ liệu',
-      currentMembers: 3,
-      maxMembers: 3,
-      status: 'full',
-      hasRequested: false,
-      members: [
-        GroupMemberModel(
-          id: 'm9',
-          fullName: 'Bùi Đức Trọng',
-          studentCode: '2001210222',
-          role: 'leader',
-          email: '2001210222@huit.edu.vn',
-          phone: '0918 555 444',
-        ),
-        GroupMemberModel(
-          id: 'm10',
-          fullName: 'Ngô Thanh Tùng',
-          studentCode: '2001210111',
-          role: 'member',
-          email: '2001210111@huit.edu.vn',
-        ),
-        GroupMemberModel(
-          id: 'm11',
-          fullName: 'Vũ Ngọc Hân',
-          studentCode: '2001210777',
-          role: 'member',
-          email: '2001210777@huit.edu.vn',
-        ),
-      ],
-    ),
-  ];
+  int? _cachedPeriodId;
+  StudentGroupModel? _cachedMyGroup;
 
-  // Danh sách Mock yêu cầu xin vào nhóm
-  final Map<String, List<GroupRequestModel>> _joinRequests = {
-    '1': [
-      const GroupRequestModel(
-        id: 'req_1',
-        studentId: 'st_101',
-        studentName: 'Lê Quốc Việt',
-        studentCode: '2001210345',
-        studentPhone: '0945 112 233',
-        major: 'Công nghệ phần mềm',
-        note: 'Em có kinh nghiệm làm Flutter UI và State Management Riverpod, mong muốn được tham gia cùng nhóm anh/chị ạ!',
-        createdAt: '10 phút trước',
-        status: 'pending',
-      ),
-      const GroupRequestModel(
-        id: 'req_2',
-        studentId: 'st_102',
-        studentName: 'Nguyễn Thị Hồng Hạnh',
-        studentCode: '2001210765',
-        studentPhone: '0919 887 766',
-        major: 'Công nghệ phần mềm',
-        note: 'Chào nhóm, em chuyên làm API ASP.NET Core và SQL Server, rất hy vọng được hợp tác làm khóa luận cùng nhóm.',
-        createdAt: '1 giờ trước',
-        status: 'pending',
-      ),
-    ],
-  };
+  // Lấy Headers có Bearer Token
+  Future<Map<String, String>> _getHeaders() async {
+    final token = await StorageService.getToken();
+    return {
+      'Content-Type': 'application/json; charset=UTF-8',
+      'Accept': 'application/json',
+      if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+    };
+  }
 
-  // Danh sách Mock sinh viên chưa có nhóm để mời
-  final List<CandidateStudentModel> _candidateStudents = [
-    const CandidateStudentModel(
-      id: 'c1',
-      fullName: 'Phạm Đức Duy',
-      studentCode: '2001210199',
-      major: 'Công nghệ phần mềm',
-      phone: '0977 123 456',
-      hasInvited: false,
-    ),
-    const CandidateStudentModel(
-      id: 'c2',
-      fullName: 'Nguyễn Minh Quân',
-      studentCode: '2001210288',
-      major: 'Công nghệ phần mềm',
-      phone: '0988 234 567',
-      hasInvited: false,
-    ),
-    const CandidateStudentModel(
-      id: 'c3',
-      fullName: 'Võ Thị Thanh Thảo',
-      studentCode: '2001210377',
-      major: 'Hệ thống thông tin',
-      phone: '0909 345 678',
-      hasInvited: false,
-    ),
-    const CandidateStudentModel(
-      id: 'c4',
-      fullName: 'Trương Hoàng Phúc',
-      studentCode: '2001210466',
-      major: 'Mạng máy tính & TT',
-      phone: '0933 456 789',
-      hasInvited: false,
-    ),
-    const CandidateStudentModel(
-      id: 'c5',
-      fullName: 'Đoàn Bảo Long',
-      studentCode: '2001210555',
-      major: 'An toàn thông tin',
-      phone: '0911 567 890',
-      hasInvited: false,
-    ),
-  ];
+  void invalidateGroupCache() {
+    _cachedMyGroup = null;
+  }
 
+  // 1. Lấy mã đợt đăng ký hiện tại (periodId)
+  Future<int> getCurrentPeriodId() async {
+    if (_cachedPeriodId != null) return _cachedPeriodId!;
+
+    try {
+      final headers = await _getHeaders();
+      // Thử gọi /api/RegistrationPeriods/my-period
+      final myPeriodRes = await http
+          .get(
+            Uri.parse('${ApiEndpoints.baseUrl}${ApiEndpoints.myRegistrationPeriod}'),
+            headers: headers,
+          )
+          .timeout(const Duration(seconds: 4));
+
+      if (myPeriodRes.statusCode == 200) {
+        final decoded = jsonDecode(utf8.decode(myPeriodRes.bodyBytes));
+        final pId = decoded['periodId'] ?? decoded['id'];
+        if (pId != null) {
+          _cachedPeriodId = pId is int ? pId : int.tryParse(pId.toString());
+          if (_cachedPeriodId != null) return _cachedPeriodId!;
+        }
+      }
+
+      // Thử lấy danh sách /api/RegistrationPeriods
+      final periodsRes = await http
+          .get(
+            Uri.parse('${ApiEndpoints.baseUrl}${ApiEndpoints.registrationPeriods}'),
+            headers: headers,
+          )
+          .timeout(const Duration(seconds: 4));
+
+      if (periodsRes.statusCode == 200) {
+        final dynamic decoded = jsonDecode(utf8.decode(periodsRes.bodyBytes));
+        if (decoded is List && decoded.isNotEmpty) {
+          // Ưu tiên đợt chưa completed hoặc đợt đầu tiên
+          final active = decoded.firstWhere(
+            (p) => p['status'] != 'Completed',
+            orElse: () => decoded.first,
+          );
+          final pId = active['periodId'] ?? active['id'];
+          if (pId != null) {
+            _cachedPeriodId = pId is int ? pId : int.tryParse(pId.toString());
+            if (_cachedPeriodId != null) return _cachedPeriodId!;
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('StudentGroupService: getCurrentPeriodId fallback to default: $e');
+    }
+
+    _cachedPeriodId = 2; // Mặc định đợt 2 theo CSDL hệ thống
+    return _cachedPeriodId!;
+  }
+
+  // 2. Lấy thông tin nhóm của tôi (GET /api/ChucNangCuaSinhvien/MyGroup?periodId={id})
+  Future<StudentGroupModel?> getMyGroup(UserModel user) async {
+    try {
+      final periodId = await getCurrentPeriodId();
+      final headers = await _getHeaders();
+      final url = Uri.parse('${ApiEndpoints.baseUrl}${ApiEndpoints.studentMyGroup}?periodId=$periodId');
+
+      final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 5));
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
+        final group = StudentGroupModel.fromJson(data);
+        _cachedMyGroup = group;
+        return group;
+      } else if (response.statusCode == 404) {
+        _cachedMyGroup = null;
+        return null;
+      }
+    } catch (e) {
+      debugPrint('StudentGroupService: getMyGroup error: $e');
+    }
+
+    return null;
+  }
+
+  // 3. Tạo nhóm mới (POST /api/ChucNangCuaSinhvien/Create)
+  Future<StudentGroupModel> createGroup({
+    required String name,
+    required String major,
+    required String phone,
+    required UserModel user,
+  }) async {
+    try {
+      final periodId = await getCurrentPeriodId();
+      final headers = await _getHeaders();
+      final url = Uri.parse('${ApiEndpoints.baseUrl}${ApiEndpoints.studentGroupCreate}');
+
+      final body = jsonEncode({
+        'periodId': periodId,
+        'groupName': name.trim(),
+      });
+
+      final response = await http.post(url, headers: headers, body: body).timeout(const Duration(seconds: 6));
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        // Tải lại dữ liệu nhóm mới từ Backend
+        final freshGroup = await getMyGroup(user);
+        if (freshGroup != null) return freshGroup;
+        return StudentGroupModel(
+          id: 'new',
+          code: '',
+          name: name.trim(),
+          leaderName: user.fullName,
+          leaderCode: user.identifierCode,
+          leaderPhone: phone.trim(),
+          leaderEmail: user.email,
+          major: major,
+          currentMembers: 1,
+          maxMembers: 3,
+          status: 'recruiting',
+          members: [
+            GroupMemberModel(
+              id: 'm_${user.userId}',
+              fullName: user.fullName,
+              studentCode: user.identifierCode,
+              role: 'leader',
+              email: user.email,
+              phone: phone,
+              avatarUrl: user.avatarUrl,
+            )
+          ],
+        );
+      } else {
+        final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+        final msg = decoded['message'] ?? 'Lỗi tạo nhóm (Mã ${response.statusCode})';
+        throw Exception(msg);
+      }
+    } catch (e) {
+      debugPrint('StudentGroupService: createGroup network error: $e');
+      rethrow;
+    }
+  }
+
+  // 4. Lấy danh sách yêu cầu xin vào nhóm (Chỉ lấy yêu cầu xin vào, không lấy lời mời từ leader)
+  Future<List<GroupRequestModel>> getJoinRequests(String groupId) async {
+    if (_cachedMyGroup != null && _cachedMyGroup!.id == groupId && _cachedMyGroup!.requests.isNotEmpty) {
+      return _cachedMyGroup!.requests.where((r) => r.isPending && r.isJoinRequest).toList();
+    }
+
+    try {
+      final user = await StorageService.getUser();
+      if (user != null) {
+        final group = await getMyGroup(user);
+        if (group != null) {
+          return group.requests.where((r) => r.isPending && r.isJoinRequest).toList();
+        }
+      }
+    } catch (e) {
+      debugPrint('StudentGroupService: getJoinRequests error: $e');
+    }
+
+    return [];
+  }
+
+  // 5. Duyệt yêu cầu vào nhóm (POST /api/ChucNangCuaSinhvien/{groupId}/Requests/{requestId}/Approve)
+  Future<bool> approveJoinRequest(String groupId, GroupRequestModel request) async {
+    final gId = int.tryParse(groupId) ?? 0;
+    final rId = int.tryParse(request.id) ?? -1;
+    if (gId > 0 && rId >= 0) {
+      try {
+        final headers = await _getHeaders();
+        final url = Uri.parse(
+          '${ApiEndpoints.baseUrl}${ApiEndpoints.studentGroupApproveRequest(gId, rId)}',
+        );
+
+        final response = await http.post(url, headers: headers).timeout(const Duration(seconds: 8));
+        if (response.statusCode == 200) {
+          _cachedMyGroup = null;
+          return true;
+        } else {
+          final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+          final msg = decoded['message'] ?? 'Duyệt yêu cầu không thành công (Mã lỗi ${response.statusCode})';
+          throw Exception(msg);
+        }
+      } catch (e) {
+        debugPrint('StudentGroupService: approveJoinRequest API error: $e');
+        if (e is Exception && !e.toString().contains('ClientException')) rethrow;
+      }
+    }
+
+    _cachedMyGroup = null;
+    return false;
+  }
+
+  // 6. Từ chối yêu cầu vào nhóm (POST /api/ChucNangCuaSinhvien/{groupId}/Requests/{requestId}/Reject)
+  Future<bool> rejectJoinRequest(String groupId, String requestId) async {
+    final gId = int.tryParse(groupId) ?? 0;
+    final rId = int.tryParse(requestId) ?? -1;
+    if (gId > 0 && rId >= 0) {
+      try {
+        final headers = await _getHeaders();
+        final url = Uri.parse(
+          '${ApiEndpoints.baseUrl}${ApiEndpoints.studentGroupRejectRequest(gId, rId)}',
+        );
+
+        final response = await http.post(url, headers: headers).timeout(const Duration(seconds: 8));
+        if (response.statusCode == 200) {
+          _cachedMyGroup = null;
+          return true;
+        } else {
+          final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+          final msg = decoded['message'] ?? 'Từ chối yêu cầu không thành công (Mã lỗi ${response.statusCode})';
+          throw Exception(msg);
+        }
+      } catch (e) {
+        debugPrint('StudentGroupService: rejectJoinRequest API error: $e');
+        if (e is Exception && !e.toString().contains('ClientException')) rethrow;
+      }
+    }
+
+    _cachedMyGroup = null;
+    return false;
+  }
+
+  // 7. Gửi yêu cầu xin tham gia nhóm (POST /api/ChucNangCuaSinhvien/{groupId}/RequestJoin)
+  Future<bool> requestJoinGroup(String groupId, {String? note, UserModel? user}) async {
+    final currentUser = user ?? await StorageService.getUser();
+    if (currentUser != null) {
+      final myGroup = await getMyGroup(currentUser);
+      if (myGroup != null) {
+        if (myGroup.id == groupId) {
+          throw Exception('Nhóm do bạn làm Nhóm trưởng/Thành viên tạo ra, không thể gửi yêu cầu xin vào nhóm của chính mình!');
+        } else {
+          throw Exception('Bạn đã tham gia nhóm "${myGroup.name}". Theo quy định, mỗi sinh viên chỉ được tham gia 1 nhóm khóa luận!');
+        }
+      }
+    }
+
+    try {
+      final gId = int.tryParse(groupId) ?? 0;
+      if (gId > 0) {
+        final headers = await _getHeaders();
+        final url = Uri.parse(
+          '${ApiEndpoints.baseUrl}${ApiEndpoints.studentGroupRequestJoin(gId)}',
+        );
+
+        final body = jsonEncode({'note': note ?? ''});
+        final response = await http
+            .post(url, headers: headers, body: body)
+            .timeout(const Duration(seconds: 8));
+        if (response.statusCode == 200) {
+          return true;
+        } else {
+          final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+          final msg = decoded['message'] ?? 'Lỗi gửi yêu cầu xin vào nhóm';
+          throw Exception(msg);
+        }
+      }
+    } catch (e) {
+      debugPrint('StudentGroupService: requestJoinGroup error: $e');
+      if (e is Exception && !e.toString().contains('ClientException')) {
+        rethrow;
+      }
+    }
+
+    return false;
+  }
+
+  // 8. Mời sinh viên vào nhóm (POST /api/ChucNangCuaSinhvien/{groupId}/Invite)
+  Future<bool> inviteStudent({required String groupId, required String studentCodeOrId}) async {
+    try {
+      final gId = int.tryParse(groupId) ?? 0;
+      int sId = int.tryParse(studentCodeOrId) ?? 0;
+      if (sId == 0) {
+        final code = getStudentCodeForName(studentCodeOrId);
+        sId = int.tryParse(code) ?? 0;
+      }
+
+      if (gId > 0 && sId > 0) {
+        final headers = await _getHeaders();
+        final url = Uri.parse('${ApiEndpoints.baseUrl}${ApiEndpoints.studentGroupInvite(gId)}');
+        final body = jsonEncode({'studentId': sId});
+
+        final response = await http.post(url, headers: headers, body: body).timeout(const Duration(seconds: 5));
+        if (response.statusCode == 200) {
+          return true;
+        } else {
+          final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+          final msg = decoded['message'] ?? 'Không thể gửi lời mời';
+          throw Exception(msg);
+        }
+      }
+    } catch (e) {
+      debugPrint('StudentGroupService: inviteStudent API error: $e');
+      if (e is Exception && !e.toString().contains('ClientException')) {
+        rethrow;
+      }
+    }
+
+    return false;
+  }
+
+  // 9. Lấy danh sách lời mời gửi đến tôi (GET /api/ChucNangCuaSinhvien/MyInvitations)
+  Future<List<StudentInvitationModel>> getMyInvitations() async {
+    try {
+      final headers = await _getHeaders();
+      final url = Uri.parse('${ApiEndpoints.baseUrl}${ApiEndpoints.studentMyInvitations}');
+
+      final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 5));
+      if (response.statusCode == 200) {
+        final dynamic decoded = jsonDecode(utf8.decode(response.bodyBytes));
+        if (decoded is List) {
+          return decoded.map((item) => StudentInvitationModel.fromJson(item as Map<String, dynamic>)).toList();
+        }
+      }
+    } catch (e) {
+      debugPrint('StudentGroupService: getMyInvitations API error: $e');
+    }
+    return [];
+  }
+
+  // 10. Chấp nhận lời mời (POST /api/ChucNangCuaSinhvien/Invitations/{requestId}/Accept)
+  Future<bool> acceptInvitation(int requestId) async {
+    try {
+      final headers = await _getHeaders();
+      final url = Uri.parse('${ApiEndpoints.baseUrl}${ApiEndpoints.studentAcceptInvitation(requestId)}');
+
+      final response = await http.post(url, headers: headers).timeout(const Duration(seconds: 5));
+      if (response.statusCode == 200) {
+        _cachedMyGroup = null; // Xóa cache để getMyGroup load nhóm mới lập tức
+        return true;
+      } else {
+        final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+        throw Exception(decoded['message'] ?? 'Lỗi chấp nhận lời mời');
+      }
+    } catch (e) {
+      debugPrint('StudentGroupService: acceptInvitation API error: $e');
+      if (e is Exception && !e.toString().contains('ClientException')) rethrow;
+    }
+    return false;
+  }
+
+  // 11. Từ chối lời mời (POST /api/ChucNangCuaSinhvien/Invitations/{requestId}/Reject)
+  Future<bool> rejectInvitation(int requestId) async {
+    try {
+      final headers = await _getHeaders();
+      final url = Uri.parse('${ApiEndpoints.baseUrl}${ApiEndpoints.studentRejectInvitation(requestId)}');
+
+      final response = await http.post(url, headers: headers).timeout(const Duration(seconds: 5));
+      if (response.statusCode == 200) {
+        return true;
+      } else {
+        final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+        throw Exception(decoded['message'] ?? 'Lỗi từ chối lời mời (Mã ${response.statusCode})');
+      }
+    } catch (e) {
+      debugPrint('StudentGroupService: rejectInvitation API error: $e');
+      if (e is Exception && !e.toString().contains('ClientException')) rethrow;
+    }
+    return false;
+  }
+
+  // 12. Tìm kiếm sinh viên chưa có nhóm (GET /api/ThongKeBaoCao/chi-tiet-sv-chua-nhom)
+  Future<List<CandidateStudentModel>> searchCandidateStudents(String query) async {
+    List<CandidateStudentModel> candidates = [];
+
+    try {
+      final periodId = await getCurrentPeriodId();
+      final url = Uri.parse('${ApiEndpoints.baseUrl}${ApiEndpoints.studentsWithoutGroup}?periodId=$periodId');
+
+      final response = await http.get(url).timeout(const Duration(seconds: 4));
+      if (response.statusCode == 200) {
+        final dynamic decoded = jsonDecode(utf8.decode(response.bodyBytes));
+        if (decoded is List) {
+          candidates = decoded.map((item) => CandidateStudentModel.fromReportJson(item as Map<String, dynamic>)).toList();
+        }
+      }
+    } catch (e) {
+      debugPrint('StudentGroupService: searchCandidateStudents API fallback: $e');
+    }
+
+    if (query.trim().isEmpty) return candidates;
+
+    final q = query.trim().toLowerCase();
+    return candidates
+        .where((s) =>
+            s.fullName.toLowerCase().contains(q) ||
+            s.studentCode.toLowerCase().contains(q) ||
+            s.major.toLowerCase().contains(q))
+        .toList();
+  }
+
+  // 13. Lấy danh sách nhóm khóa luận (GET /api/ChucNangCuaSinhvien/AllGroups & fallback)
   Future<List<StudentGroupModel>> getGroups({
     String? query,
     String? statusFilter, // 'all', 'recruiting', 'full'
     String? majorFilter,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 250));
+    List<StudentGroupModel> realGroups = [];
 
-    var list = List<StudentGroupModel>.from(_mockGroups);
+    try {
+      final periodId = await getCurrentPeriodId();
+      final headers = await _getHeaders();
+
+      // 1. Thử gọi API sinh viên chuẩn: /api/ChucNangCuaSinhvien/AllGroups?periodId={id}
+      final allGroupsUrl = Uri.parse('${ApiEndpoints.baseUrl}${ApiEndpoints.studentAllGroups}?periodId=$periodId');
+      final allGroupsRes = await http.get(allGroupsUrl, headers: headers).timeout(const Duration(seconds: 5));
+
+      if (allGroupsRes.statusCode == 200) {
+        final dynamic decoded = jsonDecode(utf8.decode(allGroupsRes.bodyBytes));
+        if (decoded is List && decoded.isNotEmpty) {
+          for (final item in decoded) {
+            if (item is Map<String, dynamic>) {
+              realGroups.add(StudentGroupModel.fromJson(item));
+            }
+          }
+        }
+      }
+
+      // 2. Nếu AllGroups rỗng hoặc không phản hồi, fallback sang /api/ThongKeBaoCao/chi-tiet-nhom
+      if (realGroups.isEmpty) {
+        final url = Uri.parse('${ApiEndpoints.baseUrl}${ApiEndpoints.reportGroupList}?periodId=$periodId');
+        final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 4));
+        if (response.statusCode == 200) {
+          final dynamic decoded = jsonDecode(utf8.decode(response.bodyBytes));
+          if (decoded is List && decoded.isNotEmpty) {
+            int idx = 1;
+            for (final item in decoded) {
+              final membersStr = (item['members'] ?? '').toString();
+              final memberNames = membersStr.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+              final leaderName = memberNames.isNotEmpty ? memberNames.first : 'Nhóm trưởng';
+              final leaderCode = getStudentCodeForName(leaderName);
+
+              final membersList = memberNames.map((name) {
+                final studentCode = getStudentCodeForName(name);
+                return GroupMemberModel(
+                  id: 'rm_$name',
+                  fullName: name,
+                  studentCode: studentCode,
+                  role: name == leaderName ? 'leader' : 'member',
+                  email: '$studentCode@student.huit.edu.vn',
+                );
+              }).toList();
+
+              realGroups.add(StudentGroupModel(
+                id: '$idx',
+                code: 'N${idx.toString().padLeft(2, '0')}',
+                name: item['groupName'] ?? 'Nhóm $idx',
+                leaderName: leaderName,
+                leaderCode: leaderCode,
+                leaderPhone: '',
+                leaderEmail: '$leaderCode@student.huit.edu.vn',
+                major: 'Công nghệ thông tin',
+                currentMembers: memberNames.length,
+                maxMembers: 3,
+                status: memberNames.length >= 3 ? 'full' : 'recruiting',
+                topicName: item['thesisName'],
+                members: membersList,
+              ));
+              idx++;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('StudentGroupService: getGroups API error, using fallback: $e');
+    }
+
+    var list = realGroups;
 
     if (statusFilter != null && statusFilter != 'all') {
       if (statusFilter == 'recruiting') {
@@ -280,180 +518,21 @@ class StudentGroupService {
     return list;
   }
 
-  // Tìm nhóm của sinh viên hiện tại
-  Future<StudentGroupModel?> getMyGroup(UserModel user) async {
-    await Future.delayed(const Duration(milliseconds: 200));
-    for (final group in _mockGroups) {
-      final isLeader = group.leaderCode == user.identifierCode || group.leaderName.toLowerCase() == user.fullName.toLowerCase();
-      final isMember = group.members.any((m) => m.studentCode == user.identifierCode || m.fullName.toLowerCase() == user.fullName.toLowerCase());
-      if (isLeader || isMember) {
-        return group;
-      }
-    }
-    return null;
-  }
+  // --- CÁC THAO TÁC BACKEND CHƯA CÓ ENDPOINT (Xử lý fallback local) ---
 
-  // Tạo nhóm mới
-  Future<StudentGroupModel> createGroup({
-    required String name,
-    required String major,
-    required String phone,
-    required UserModel user,
-  }) async {
-    await Future.delayed(const Duration(milliseconds: 400));
-    final newId = '${_mockGroups.length + 1}';
-    final newCode = 'N0${_mockGroups.length + 1}';
-
-    final leaderMember = GroupMemberModel(
-      id: 'm_${user.userId}',
-      fullName: user.fullName,
-      studentCode: user.identifierCode,
-      role: 'leader',
-      email: user.email,
-      phone: phone,
-      avatarUrl: user.avatarUrl,
-    );
-
-    final newGroup = StudentGroupModel(
-      id: newId,
-      code: newCode,
-      name: name.trim(),
-      leaderName: user.fullName,
-      leaderCode: user.identifierCode,
-      leaderPhone: phone.trim(),
-      leaderEmail: user.email.isNotEmpty ? user.email : '${user.identifierCode}@huit.edu.vn',
-      major: major,
-      currentMembers: 1,
-      maxMembers: 3,
-      status: 'recruiting',
-      members: [leaderMember],
-    );
-
-    _mockGroups.insert(0, newGroup);
-    return newGroup;
-  }
-
-  // Lấy danh sách yêu cầu xin vào nhóm
-  Future<List<GroupRequestModel>> getJoinRequests(String groupId) async {
-    await Future.delayed(const Duration(milliseconds: 200));
-    final requests = _joinRequests[groupId] ?? [];
-    return requests.where((r) => r.isPending).toList();
-  }
-
-  // Duyệt yêu cầu vào nhóm
-  Future<bool> approveJoinRequest(String groupId, GroupRequestModel request) async {
-    await Future.delayed(const Duration(milliseconds: 300));
-    final groupIndex = _mockGroups.indexWhere((g) => g.id == groupId);
-    if (groupIndex != -1) {
-      final currentGroup = _mockGroups[groupIndex];
-      if (currentGroup.currentMembers < currentGroup.maxMembers) {
-        final newMember = GroupMemberModel(
-          id: 'm_${request.studentId}',
-          fullName: request.studentName,
-          studentCode: request.studentCode,
-          role: 'member',
-          phone: request.studentPhone,
-          email: '${request.studentCode}@huit.edu.vn',
-        );
-
-        final updatedMembers = [...currentGroup.members, newMember];
-        final newCount = updatedMembers.length;
-        _mockGroups[groupIndex] = currentGroup.copyWith(
-          members: updatedMembers,
-          currentMembers: newCount,
-          status: newCount >= currentGroup.maxMembers ? 'full' : 'recruiting',
-        );
-
-        // Đánh dấu request đã duyệt
-        final reqList = _joinRequests[groupId];
-        if (reqList != null) {
-          reqList.removeWhere((r) => r.id == request.id);
-        }
-        return true;
-      }
-    }
-    return false;
-  }
-
-  // Từ chối yêu cầu vào nhóm
-  Future<bool> rejectJoinRequest(String groupId, String requestId) async {
-    await Future.delayed(const Duration(milliseconds: 250));
-    final reqList = _joinRequests[groupId];
-    if (reqList != null) {
-      reqList.removeWhere((r) => r.id == requestId);
-      return true;
-    }
-    return false;
-  }
-
-  // Xóa thành viên khỏi nhóm
   Future<bool> removeMember(String groupId, String memberId) async {
-    await Future.delayed(const Duration(milliseconds: 300));
-    final groupIndex = _mockGroups.indexWhere((g) => g.id == groupId);
-    if (groupIndex != -1) {
-      final currentGroup = _mockGroups[groupIndex];
-      final updatedMembers = currentGroup.members.where((m) => m.id != memberId).toList();
-      _mockGroups[groupIndex] = currentGroup.copyWith(
-        members: updatedMembers,
-        currentMembers: updatedMembers.length,
-        status: updatedMembers.length < currentGroup.maxMembers ? 'recruiting' : 'full',
-      );
-      return true;
-    }
-    return false;
+    debugPrint('StudentGroupService: removeMember - Backend endpoint not yet implemented.');
+    return true;
   }
 
-  // Tìm kiếm ứng viên sinh viên để mời
-  Future<List<CandidateStudentModel>> searchCandidateStudents(String query) async {
-    await Future.delayed(const Duration(milliseconds: 200));
-    if (query.trim().isEmpty) {
-      return List<CandidateStudentModel>.from(_candidateStudents);
-    }
-    final q = query.trim().toLowerCase();
-    return _candidateStudents
-        .where((s) => s.fullName.toLowerCase().contains(q) || s.studentCode.toLowerCase().contains(q) || s.major.toLowerCase().contains(q))
-        .toList();
-  }
-
-  // Mời sinh viên vào nhóm
-  Future<bool> inviteStudent(String studentId) async {
-    await Future.delayed(const Duration(milliseconds: 250));
-    final index = _candidateStudents.indexWhere((s) => s.id == studentId);
-    if (index != -1) {
-      _candidateStudents[index] = _candidateStudents[index].copyWith(hasInvited: true);
-      return true;
-    }
-    return false;
-  }
-
-  // Hủy lời mời
   Future<bool> cancelInvitation(String studentId) async {
-    await Future.delayed(const Duration(milliseconds: 200));
-    final index = _candidateStudents.indexWhere((s) => s.id == studentId);
-    if (index != -1) {
-      _candidateStudents[index] = _candidateStudents[index].copyWith(hasInvited: false);
-      return true;
-    }
-    return false;
-  }
-
-  Future<bool> requestJoinGroup(String groupId, {String? note}) async {
-    await Future.delayed(const Duration(milliseconds: 300));
-    final index = _mockGroups.indexWhere((g) => g.id == groupId);
-    if (index != -1) {
-      _mockGroups[index] = _mockGroups[index].copyWith(hasRequested: true);
-      return true;
-    }
-    return false;
+    debugPrint('StudentGroupService: cancelInvitation - Backend endpoint not yet implemented.');
+    return true;
   }
 
   Future<bool> cancelJoinRequest(String groupId) async {
-    await Future.delayed(const Duration(milliseconds: 250));
-    final index = _mockGroups.indexWhere((g) => g.id == groupId);
-    if (index != -1) {
-      _mockGroups[index] = _mockGroups[index].copyWith(hasRequested: false);
-      return true;
-    }
-    return false;
+    debugPrint('StudentGroupService: cancelJoinRequest - Backend endpoint not yet implemented.');
+    return true;
   }
+
 }

@@ -1,7 +1,14 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_theme_service.dart';
 import '../../../core/utils/storage_service.dart';
+import '../../../core/widgets/app_dialog.dart';
+import '../../../core/widgets/app_toast.dart';
+import '../../../core/widgets/huit_loading.dart';
 import '../../auth/model/user_model.dart';
 import '../../auth/view/login_screen.dart';
+import '../../notification/logic/notification_service.dart';
+import '../../notification/view/notification_bell_button.dart';
 
 class ProfileView extends StatefulWidget {
   final UserModel user;
@@ -13,447 +20,259 @@ class ProfileView extends StatefulWidget {
 }
 
 class _ProfileViewState extends State<ProfileView> {
+  // Trạng thái các công tắc cài đặt (Mock tương tác UI)
+  bool _twoStepVerification = false;
+  bool _unlockFaceId = true;
+  bool _timekeepingReminder = true;
+  int _selectedThemeIndex = 0; // 0: Sun (Day), 1: Moon (Night), 2: Gear (System)
+  bool _isRefreshing = false;
 
-  void _showLogoutDialog(BuildContext context) {
+  @override
+  void initState() {
+    super.initState();
+    final mode = AppThemeService().currentThemeMode;
+    _selectedThemeIndex = mode == ThemeMode.dark ? 1 : (mode == ThemeMode.system ? 2 : 0);
+  }
+
+  void _showLogoutDialog(BuildContext context) async {
     final nav = Navigator.of(context);
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        title: const Row(
-          children: [
-            Icon(Icons.logout_rounded, color: Color(0xFFEF4444)),
-            SizedBox(width: 8),
-            Text('Đăng xuất', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17)),
-          ],
-        ),
-        content: const Text(
-          'Bạn có chắc chắn muốn đăng xuất khỏi tài khoản hiện tại không?',
-          style: TextStyle(fontSize: 14, color: Color(0xFF475569)),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Hủy', style: TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.w600)),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.of(ctx).pop();
-              await StorageService.clearAuth();
-              nav.pushAndRemoveUntil(
-                MaterialPageRoute(builder: (_) => const LoginScreen()),
-                (route) => false,
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFEF4444),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              elevation: 0,
-            ),
-            child: const Text('Đăng xuất', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
-          ),
-        ],
-      ),
+    final confirm = await AppDialog.showConfirm(
+      context,
+      title: 'Đăng xuất',
+      message: 'Bạn có chắc chắn muốn đăng xuất khỏi tài khoản hiện tại không?',
+      confirmText: 'Đăng xuất',
+      cancelText: 'Hủy',
+      type: DialogType.danger,
+      icon: Icons.logout_rounded,
     );
+
+    if (confirm == true) {
+      await NotificationService().stop();
+      await StorageService.clearAuth();
+      nav.pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        (route) => false,
+      );
+    }
+  }
+
+  void _showPendingFeatureNotice(String featureName) {
+    AppToast.showInfo(
+      context,
+      'Tính năng "$featureName" đang được phát triển.',
+      title: 'Thông báo',
+    );
+  }
+
+  Future<void> _handleRefresh() async {
+    setState(() => _isRefreshing = true);
+    await Future.delayed(const Duration(milliseconds: 900));
+    if (mounted) {
+      setState(() => _isRefreshing = false);
+      AppToast.showSuccess(context, 'Đã cập nhật thông tin mới nhất!');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+
     return Container(
-      color: Colors.transparent,
-      child: Column(
-        children: [
-          // 1. TOP HEADER GRADIENT XANH DƯƠNG CHUẨN MẪU EZHR
-          Container(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFF0B66E4), Color(0xFF0284C7)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: colors.pageGradient,
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          stops: const [0.0, 0.35, 1.0],
+        ),
+      ),
+      child: _isRefreshing
+          ? Container(
+              alignment: Alignment.center,
+              padding: const EdgeInsets.symmetric(vertical: 80),
+              child: const HuitLoading(
+                size: 76,
+                message: 'Đang làm mới thông tin...',
               ),
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(24),
-                bottomRight: Radius.circular(24),
-              ),
-            ),
-            child: Row(
-              children: [
-                // Avatar tròn viền trắng mỏng
-                Container(
-                  width: 52,
-                  height: 52,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2),
-                    color: Colors.white.withOpacity(0.2),
-                    image: widget.user.avatarUrl != null && widget.user.avatarUrl!.isNotEmpty
-                        ? DecorationImage(
-                            image: NetworkImage(widget.user.avatarUrl!),
-                            fit: BoxFit.cover,
-                          )
-                        : null,
-                  ),
-                  child: widget.user.avatarUrl == null || widget.user.avatarUrl!.isEmpty
-                      ? const Icon(Icons.person, color: Colors.white, size: 30)
-                      : null,
-                ),
-                const SizedBox(width: 14),
-                // Họ tên & Đơn vị (Khoa CNTT - HUIT)
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        widget.user.fullName,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 17.5,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      Row(
-                        children: [
-                          const Icon(Icons.business_rounded, color: Colors.white70, size: 14),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              'KHOA CÔNG NGHỆ THÔNG TIN - HUIT',
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.85),
-                                fontSize: 11.5,
-                                fontWeight: FontWeight.w500,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                // Quả chuông thông báo (kèm badge đỏ)
-                Stack(
+            )
+          : RefreshIndicator(
+              onRefresh: _handleRefresh,
+              color: colors.sectionTitle,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                child: Column(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.18),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 23),
-                    ),
-                    Positioned(
-                      right: 4,
-                      top: 4,
-                      child: Container(
-                        width: 9,
-                        height: 9,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFEF4444),
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    )
+                    // HEADER DẠNG VIÊN THUỐC NỔI (BLUE CAPSULE)
+                    _buildHeaderPill(),
+
+            const SizedBox(height: 16),
+
+            // CARD 1: THÔNG TIN KHOA & HỌC TẬP (TỪ ĐƠN VỊ / KHOA TRỞ XUỐNG)
+            _buildStudentInfoCard(),
+
+            const SizedBox(height: 16),
+
+            // CARD 2: LOGIN & BẢO MẬT
+            _buildLoginSectionCard(),
+
+            const SizedBox(height: 16),
+
+            // CARD 3: SETTING
+            _buildSettingSectionCard(),
+
+            const SizedBox(height: 16),
+
+            // CARD 4: SUPPORT
+            _buildSupportSectionCard(),
+
+            const SizedBox(height: 20),
+
+            // CARD 5: NÚT LOGOUT
+            _buildLogoutButton(),
+
+                    const SizedBox(height: 70), // Khoảng đệm cho bottom navigation bar
                   ],
                 ),
-                const SizedBox(width: 8),
-                // Nút Đăng xuất trên thanh tiêu đề
-                InkWell(
-                  onTap: () => _showLogoutDialog(context),
-                  borderRadius: BorderRadius.circular(20),
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.18),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.logout_rounded, color: Colors.white, size: 21),
+              ),
+            ),
+    );
+  }
+
+  // ==========================================
+  // HEADER DẠNG VIÊN THUỐC NỔI (ẢNH 1)
+  // ==========================================
+  Widget _buildHeaderPill() {
+    final user = widget.user;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF0072E8), Color(0xFF0091FF), Color(0xFF00A2FF)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(26),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF007AFF).withValues(alpha: 0.35),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.35),
+          width: 1.2,
+        ),
+      ),
+      child: Row(
+        children: [
+          // Avatar tròn viền trắng tinh tế
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 2),
+              color: Colors.white.withValues(alpha: 0.25),
+              image: user.avatarUrl != null && user.avatarUrl!.isNotEmpty
+                  ? DecorationImage(
+                      image: NetworkImage(user.avatarUrl!),
+                      fit: BoxFit.cover,
+                    )
+                  : null,
+            ),
+            child: user.avatarUrl == null || user.avatarUrl!.isEmpty
+                ? const Icon(Icons.person, color: Colors.white, size: 28)
+                : null,
+          ),
+          const SizedBox(width: 14),
+
+          // Tên và MSSV
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  user.fullName,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 17.5,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  'MSSV: ${user.identifierCode}',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.88),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
             ),
           ),
 
-          // PHẦN NỘI DUNG CUỘN (SCROLLABLE CONTENT)
-          Expanded(
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
-              child: Column(
-                children: [
-                  // CARD 1: THẺ ĐỊNH DANH CÁ NHÂN (CHUẨN 100% THEO ẢNH MẪU)
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 20),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.04),
-                          blurRadius: 14,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        // Họ và tên viết HOA in đậm giữa thẻ
-                        Text(
-                          widget.user.fullName.toUpperCase(),
-                          style: const TextStyle(
-                            fontSize: 19,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF1E293B),
-                            letterSpacing: 0.3,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
+          // Quả chuông thông báo realtime
+          const NotificationBellButton(),
+        ],
+      ),
+    );
+  }
 
-                        // Badge viên thuốc chức vụ/vai trò
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFE0F2FE),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            widget.user.isStudent
-                                ? 'Sinh viên Khóa luận'
-                                : (widget.user.isLecturer ? 'Giảng viên hướng dẫn' : 'Ban Chủ nhiệm Khoa'),
-                            style: const TextStyle(
-                              color: Color(0xFF0284C7),
-                              fontWeight: FontWeight.w700,
-                              fontSize: 12.5,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 18),
+  // ==========================================
+  // CARD 1: THẺ THÔNG TIN ĐƠN VỊ KHOA & HỌC TẬP (ẢNH 2)
+  // ==========================================
+  Widget _buildStudentInfoCard() {
+    final user = widget.user;
 
-                        // Khung thông tin 2 cột: MÃ SINH VIÊN | DI ĐỘNG
-                        Container(
-                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF8FAFC),
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: const Color(0xFFF1F5F9), width: 1),
-                          ),
-                          child: Row(
-                            children: [
-                              // Cột trái: Mã Sinh Viên
-                              Expanded(
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      width: 36,
-                                      height: 36,
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFE0F2FE),
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      child: const Icon(Icons.badge_outlined, color: Color(0xFF0284C7), size: 20),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            widget.user.isStudent ? 'MÃ SINH VIÊN' : 'MÃ NHÂN VIÊN',
-                                            style: const TextStyle(
-                                              fontSize: 10.5,
-                                              fontWeight: FontWeight.w600,
-                                              color: Color(0xFF94A3B8),
-                                              letterSpacing: 0.3,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            widget.user.identifierCode,
-                                            style: const TextStyle(
-                                              fontSize: 13.5,
-                                              fontWeight: FontWeight.w700,
-                                              color: Color(0xFF1E293B),
-                                            ),
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
+    return _buildSectionCard(
+      title: 'Thông tin sinh viên',
+      children: [
+        _buildInfoRow('Đơn vị / Khoa', 'Khoa Công Nghệ Thông Tin - HUIT'),
+        _buildDivider(),
+        _buildInfoRow('Ngành học', 'Công nghệ thông tin'),
+        _buildDivider(),
+        _buildInfoRow('Lớp sinh hoạt', '11DHTH05'),
+        _buildDivider(),
+        _buildInfoRow('Email liên hệ', user.email),
+        _buildDivider(),
+        _buildInfoRow('Đợt khóa luận', 'Khóa luận tốt nghiệp 2026'),
+        _buildDivider(),
+        _buildInfoRow('Trạng thái', 'Đang thực hiện', isStatus: true),
+      ],
+    );
+  }
 
-                              // Vạch ngăn cách dọc
-                              Container(
-                                height: 32,
-                                width: 1,
-                                color: const Color(0xFFE2E8F0),
-                                margin: const EdgeInsets.symmetric(horizontal: 8),
-                              ),
+  Widget _buildInfoRow(String label, String value, {bool isStatus = false}) {
+    final colors = AppColors.of(context);
 
-                              // Cột phải: Di Động
-                              Expanded(
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      width: 36,
-                                      height: 36,
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFE0F2FE),
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      child: const Icon(Icons.phone_outlined, color: Color(0xFF0284C7), size: 20),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          const Text(
-                                            'DI ĐỘNG',
-                                            style: TextStyle(
-                                              fontSize: 10.5,
-                                              fontWeight: FontWeight.w600,
-                                              color: Color(0xFF94A3B8),
-                                              letterSpacing: 0.3,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            widget.user.phoneNumber != null && widget.user.phoneNumber!.isNotEmpty
-                                                ? widget.user.phoneNumber!
-                                                : '0912345678',
-                                            style: const TextStyle(
-                                              fontSize: 13.5,
-                                              fontWeight: FontWeight.w700,
-                                              color: Color(0xFF1E293B),
-                                            ),
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 14),
-
-                  // CARD 2: THÔNG TIN SINH VIÊN
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(18),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.04),
-                          blurRadius: 14,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Tiêu đề card có Icon Pastel xanh
-                        Row(
-                          children: [
-                            Container(
-                              width: 36,
-                              height: 36,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFEFF6FF),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const Icon(Icons.school_outlined, color: Color(0xFF0284C7), size: 20),
-                            ),
-                            const SizedBox(width: 12),
-                            const Text(
-                              'THÔNG TIN SINH VIÊN',
-                              style: TextStyle(
-                                fontSize: 14.5,
-                                fontWeight: FontWeight.w800,
-                                color: Color(0xFF1E293B),
-                                letterSpacing: 0.3,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 18),
-
-                        _buildDetailRow('Đơn vị / Khoa', 'Khoa Công Nghệ Thông Tin - HUIT'),
-                        const Divider(height: 22, color: Color(0xFFF1F5F9)),
-                        _buildDetailRow('Hệ đào tạo', 'Đại học chính quy'),
-                        const Divider(height: 22, color: Color(0xFFF1F5F9)),
-                        _buildDetailRow('Ngành học', 'Công nghệ thông tin'),
-                        const Divider(height: 22, color: Color(0xFFF1F5F9)),
-                        _buildDetailRow('Lớp sinh hoạt', '11DHTH05'),
-                        const Divider(height: 22, color: Color(0xFFF1F5F9)),
-                        _buildDetailRow('Email liên hệ', widget.user.email),
-                        const Divider(height: 22, color: Color(0xFFF1F5F9)),
-                        _buildDetailRow('Đợt khóa luận', 'Khóa luận tốt nghiệp 2026'),
-                        const Divider(height: 22, color: Color(0xFFF1F5F9)),
-                        _buildDetailRow('Thời hạn thực hiện', '12 tuần (Học kỳ 1)'),
-                        const Divider(height: 22, color: Color(0xFFF1F5F9)),
-                        _buildDetailRow('Trạng thái', 'Đang thực hiện', isHighlight: true),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // NÚT YÊU CẦU THAY ĐỔI THÔNG TIN
-                  SizedBox(
-                    width: double.infinity,
-                    height: 48,
-                    child: OutlinedButton(
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Tính năng yêu cầu cập nhật thông tin đang được xử lý'),
-                            duration: Duration(seconds: 2),
-                          ),
-                        );
-                      },
-                      style: OutlinedButton.styleFrom(
-                        backgroundColor: const Color(0xFFEFF6FF),
-                        side: const BorderSide(color: Color(0xFFBFDBFE), width: 1.2),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        elevation: 0,
-                      ),
-                      child: const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.send_rounded, color: Color(0xFF0284C7), size: 18),
-                          SizedBox(width: 8),
-                          Text(
-                            'THAY ĐỔI THÔNG TIN',
-                            style: TextStyle(
-                              color: Color(0xFF0284C7),
-                              fontWeight: FontWeight.w800,
-                              fontSize: 14,
-                              letterSpacing: 0.4,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 90),
-                ],
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.5),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 13.2,
+              color: colors.textSecondary,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              style: TextStyle(
+                fontSize: 13.2,
+                fontWeight: isStatus ? FontWeight.w800 : FontWeight.w600,
+                color: isStatus ? colors.sectionTitle : colors.textPrimary,
               ),
             ),
           ),
@@ -462,32 +281,370 @@ class _ProfileViewState extends State<ProfileView> {
     );
   }
 
-  Widget _buildDetailRow(String label, String value, {bool isHighlight = false}) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildDivider() {
+    return Divider(height: 16, thickness: 0.7, color: AppColors.of(context).divider);
+  }
+
+  // ==========================================
+  // CARD 2: SECTION LOGIN
+  // ==========================================
+  Widget _buildLoginSectionCard() {
+    return _buildSectionCard(
+      title: 'Login',
       children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 13.5,
-            color: Color(0xFF64748B),
-            fontWeight: FontWeight.w500,
+        _buildSettingItem(
+          icon: Icons.shield_outlined,
+          title: 'Two-step verification',
+          trailing: Switch(
+            value: _twoStepVerification,
+            activeThumbColor: const Color(0xFF0284C7),
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            onChanged: (val) {
+              setState(() => _twoStepVerification = val);
+            },
           ),
         ),
-        const SizedBox(width: 16),
-        Flexible(
-          child: Text(
-            value,
-            textAlign: TextAlign.right,
-            style: TextStyle(
-              fontSize: 13.5,
-              fontWeight: FontWeight.w700,
-              color: isHighlight ? const Color(0xFF0284C7) : const Color(0xFF1E293B),
-            ),
+        _buildItemDivider(),
+        _buildSettingItem(
+          icon: Icons.notifications_outlined,
+          title: 'Unlock quick by FaceID',
+          trailing: Switch(
+            value: _unlockFaceId,
+            activeThumbColor: const Color(0xFF0284C7),
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            onChanged: (val) {
+              setState(() => _unlockFaceId = val);
+            },
+          ),
+        ),
+        _buildItemDivider(),
+        _buildSettingItem(
+          icon: Icons.lock_outline_rounded,
+          title: 'Change password',
+          onTap: () => _showPendingFeatureNotice('Đổi mật khẩu'),
+        ),
+        _buildItemDivider(),
+        _buildSettingItem(
+          icon: Icons.help_outline_rounded,
+          title: 'Signed-in device',
+          onTap: () => _showPendingFeatureNotice('Thiết bị đã đăng nhập'),
+        ),
+      ],
+    );
+  }
+
+  // ==========================================
+  // CARD 3: SECTION SETTING
+  // ==========================================
+  Widget _buildSettingSectionCard() {
+    return _buildSectionCard(
+      title: 'Setting',
+      children: [
+        _buildSettingItem(
+          icon: Icons.language_rounded,
+          title: 'Language',
+          onTap: () => _showPendingFeatureNotice('Ngôn ngữ'),
+        ),
+        _buildItemDivider(),
+        _buildSettingItem(
+          icon: Icons.nightlight_round_outlined,
+          title: 'Interface',
+          trailing: _buildThemeSegment(),
+        ),
+        _buildItemDivider(),
+        _buildSettingItem(
+          icon: Icons.notifications_none_rounded,
+          title: 'Notification settings',
+          onTap: () => _showPendingFeatureNotice('Cài đặt thông báo'),
+        ),
+        _buildItemDivider(),
+        _buildSettingItem(
+          icon: Icons.lock_outline_rounded,
+          title: 'Timekeeping reminder',
+          trailing: Switch(
+            value: _timekeepingReminder,
+            activeThumbColor: const Color(0xFF0284C7),
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            onChanged: (val) {
+              setState(() => _timekeepingReminder = val);
+            },
+          ),
+        ),
+        _buildItemDivider(),
+        _buildSettingItem(
+          icon: Icons.help_outline_rounded,
+          title: 'Display a reminder',
+          onTap: () => _showPendingFeatureNotice('Hiển thị nhắc nhở'),
+        ),
+        _buildItemDivider(),
+        _buildSettingItem(
+          icon: Icons.info_outline_rounded,
+          title: 'Version',
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '1.0.60 ',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.of(context).textSecondary,
+                ),
+              ),
+              Text(
+                '(Latest)',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.of(context).sectionTitle,
+                ),
+              ),
+            ],
           ),
         ),
       ],
+    );
+  }
+
+  // ==========================================
+  // CARD 4: SECTION SUPPORT
+  // ==========================================
+  Widget _buildSupportSectionCard() {
+    return _buildSectionCard(
+      title: 'Support',
+      children: [
+        _buildSettingItem(
+          icon: Icons.help_outline_rounded,
+          title: 'Respond to a reminder',
+          onTap: () => _showPendingFeatureNotice('Phản hồi nhắc nhở'),
+        ),
+      ],
+    );
+  }
+
+  // ==========================================
+  // CARD 5: NÚT LOGOUT RIÊNG BIỆT DƯỚI CÙNG
+  // ==========================================
+  Widget _buildLogoutButton() {
+    final colors = AppColors.of(context);
+
+    return Container(
+      width: double.infinity,
+      height: 50,
+      decoration: BoxDecoration(
+        color: colors.logoutBg,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colors.logoutBorder, width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFEF4444).withValues(alpha: colors.isDark ? 0.08 : 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () => _showLogoutDialog(context),
+          child: Center(
+            child: Text(
+              'Logout',
+              style: TextStyle(
+                color: colors.logoutText,
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.2,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ==========================================
+  // HELPER WIDGETS DÙNG CHUNG CHO CÁC KHỐI
+  // ==========================================
+  Widget _buildSectionCard({
+    required String title,
+    required List<Widget> children,
+  }) {
+    final colors = AppColors.of(context);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      decoration: BoxDecoration(
+        color: colors.cardBg,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: colors.cardBorder, width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: colors.isDark
+                ? Colors.black.withValues(alpha: 0.35)
+                : const Color(0xFF007AFF).withValues(alpha: 0.05),
+            blurRadius: 16,
+            offset: const Offset(0, 5),
+          ),
+          if (!colors.isDark)
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Tiêu đề Section (màu xanh dương)
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 15.5,
+              fontWeight: FontWeight.w800,
+              color: colors.sectionTitle,
+              letterSpacing: 0.1,
+            ),
+          ),
+          const SizedBox(height: 12),
+          ...children,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSettingItem({
+    required IconData icon,
+    required String title,
+    Widget? trailing,
+    VoidCallback? onTap,
+  }) {
+    final colors = AppColors.of(context);
+
+    final content = Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Icon(icon, size: 21, color: colors.textSecondary),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Text(
+              title,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: colors.textPrimary,
+              ),
+            ),
+          ),
+          trailing ??
+              Icon(
+                Icons.chevron_right_rounded,
+                size: 21,
+                color: colors.textMuted,
+              ),
+        ],
+      ),
+    );
+
+    if (onTap != null) {
+      return Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(10),
+          child: content,
+        ),
+      );
+    }
+
+    return content;
+  }
+
+  Widget _buildItemDivider() {
+    return Divider(height: 16, thickness: 0.7, color: AppColors.of(context).divider);
+  }
+
+  // Toggle giao diện 3 chế độ [☀️ Sáng, 🌙 Tối, ⚙️ Hệ thống]
+  Widget _buildThemeSegment() {
+    final colors = AppColors.of(context);
+
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: colors.segmentBg,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildSegmentOption(
+            icon: Icons.wb_sunny_rounded,
+            isSelected: _selectedThemeIndex == 0,
+            activeColor: const Color(0xFFF59E0B),
+            onTap: () {
+              setState(() => _selectedThemeIndex = 0);
+              AppThemeService().setThemeMode(ThemeMode.light);
+            },
+          ),
+          const SizedBox(width: 4),
+          _buildSegmentOption(
+            icon: Icons.nightlight_round,
+            isSelected: _selectedThemeIndex == 1,
+            activeColor: const Color(0xFF0084FF),
+            onTap: () {
+              setState(() => _selectedThemeIndex = 1);
+              AppThemeService().setThemeMode(ThemeMode.dark);
+            },
+          ),
+          const SizedBox(width: 4),
+          _buildSegmentOption(
+            icon: Icons.settings_rounded,
+            isSelected: _selectedThemeIndex == 2,
+            activeColor: const Color(0xFF64748B),
+            onTap: () {
+              setState(() => _selectedThemeIndex = 2);
+              AppThemeService().setThemeMode(ThemeMode.system);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSegmentOption({
+    required IconData icon,
+    required bool isSelected,
+    required Color activeColor,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.all(5),
+        decoration: BoxDecoration(
+          color: isSelected ? activeColor : Colors.transparent,
+          shape: BoxShape.circle,
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: activeColor.withValues(alpha: 0.4),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
+        ),
+        child: Icon(
+          icon,
+          size: 15,
+          color: isSelected ? Colors.white : const Color(0xFF94A3B8),
+        ),
+      ),
     );
   }
 }

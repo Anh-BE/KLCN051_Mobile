@@ -4,6 +4,7 @@ import '../../auth/model/user_model.dart';
 import '../group/view/student_group_list_screen.dart';
 import '../group/view/student_manage_group_screen.dart';
 import '../topic/view/student_topic_list_screen.dart';
+import '../../notification/view/notification_bell_button.dart';
 
 class StudentHomeView extends StatelessWidget {
   final UserModel user;
@@ -91,37 +92,8 @@ class StudentHomeView extends StatelessWidget {
                       ),
                     ),
 
-                    // Quả chuông thông báo trong vòng tròn mờ có chấm cam đỏ
-                    Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(9),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.22),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.notifications_none_rounded,
-                            color: Colors.white,
-                            size: 22,
-                          ),
-                        ),
-                        Positioned(
-                          right: 2,
-                          top: 2,
-                          child: Container(
-                            width: 9,
-                            height: 9,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFFF3B30),
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 1.5),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                    // Quả chuông thông báo realtime
+                    const NotificationBellButton(),
                   ],
                 ),
               ),

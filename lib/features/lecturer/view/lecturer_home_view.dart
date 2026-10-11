@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../auth/model/user_model.dart';
+import '../../notification/view/notification_bell_button.dart';
 
 class LecturerHomeView extends StatelessWidget {
   final UserModel user;
@@ -70,15 +71,8 @@ class LecturerHomeView extends StatelessWidget {
                     ],
                   ),
                 ),
-                // Quả chuông thông báo
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.18),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 24),
-                ),
+                // Quả chuông thông báo realtime
+                const NotificationBellButton(),
               ],
             ),
           ),

@@ -54,6 +54,8 @@ class StorageService {
     return prefs.getBool(_keyRememberMe) ?? true;
   }
 
+  static const String _keyThemeMode = 'app_theme_mode';
+
   static Future<String?> getLanguage() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_keyLanguage);
@@ -62,6 +64,16 @@ class StorageService {
   static Future<void> setLanguage(String langCode) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyLanguage, langCode);
+  }
+
+  static Future<String?> getThemeMode() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_keyThemeMode);
+  }
+
+  static Future<void> setThemeMode(String mode) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyThemeMode, mode);
   }
 
   static Future<void> clearAuth() async {

@@ -14,6 +14,7 @@ class ThesisTopicModel {
   final int currentStudents;
   final String status; // 'open' ('Mở'), 'closed' ('Đóng'), 'registered'
   final bool isMyTopic;
+  final String? registeredGroupId;
   final String? registeredGroupName;
   final String periodName;
   final String researchDirection; // Hướng đề tài: 'Tích hợp', 'Nghiên cứu', 'Ứng dụng'
@@ -35,13 +36,40 @@ class ThesisTopicModel {
     this.currentStudents = 0,
     this.status = 'open',
     this.isMyTopic = false,
+    this.registeredGroupId,
     this.registeredGroupName,
     this.periodName = 'Đợt 1 - KLCN - CNTT',
     this.researchDirection = 'Ứng dụng',
     this.targetOutput,
   });
 
-  bool get isOpen => status == 'open' || status == 'available';
+  bool get isOpen {
+    final s = status.toLowerCase();
+    final isApprovedOrOpen = s == 'open' || s == 'approved' || s == 'available';
+    final hasNoGroup = registeredGroupId == null || registeredGroupId!.isEmpty || registeredGroupId == '0';
+    return isApprovedOrOpen && hasNoGroup;
+  }
+
+  bool isRegisteredByOther(String? myGroupId) {
+    if (registeredGroupId == null || registeredGroupId!.isEmpty || registeredGroupId == '0') {
+      return false;
+    }
+    return myGroupId == null || registeredGroupId != myGroupId;
+  }
+
+  bool isRegisteredByMyGroup(String? myGroupId) {
+    if (registeredGroupId == null || registeredGroupId!.isEmpty || registeredGroupId == '0') {
+      return isMyTopic;
+    }
+    return isMyTopic || (myGroupId != null && registeredGroupId == myGroupId);
+  }
+
+  String statusDisplayForGroup(String? myGroupId) {
+    if (isRegisteredByMyGroup(myGroupId)) return 'Đã đăng ký';
+    if (isRegisteredByOther(myGroupId)) return 'Đã có nhóm';
+    if (isOpen) return 'Mở';
+    return 'Đóng';
+  }
 
   String get statusDisplay {
     if (isMyTopic) return 'Đã đăng ký';
@@ -70,25 +98,31 @@ class ThesisTopicModel {
   }
 
   factory ThesisTopicModel.fromJson(Map<String, dynamic> json) {
+    final rawId = (json['thesisId'] ?? json['id'] ?? '').toString();
+    final padId = rawId.isNotEmpty && int.tryParse(rawId) != null ? rawId.padLeft(3, '0') : '001';
+
     return ThesisTopicModel(
-      id: (json['thesisId'] ?? json['id'] ?? '').toString(),
-      topicCode: (json['thesisCode'] ?? json['topicCode'] ?? json['code'] ?? 'CNTT-KLCN001').toString(),
-      title: json['thesisName'] ?? json['title'] ?? json['topicName'] ?? '',
+      id: rawId,
+      topicCode: (json['thesisCode'] ?? json['topicCode'] ?? json['code'] ?? 'CNTT-KLCN$padId').toString(),
+      title: json['thesisTitle'] ?? json['thesisName'] ?? json['title'] ?? json['topicName'] ?? '',
       titleEn: json['thesisNameEn'] ?? json['titleEn'],
-      description: json['description'] ?? json['objective'] ?? 'Chưa có mô tả chi tiết.',
+      description: json['description'] ?? json['objective'] ?? json['requirements'] ?? 'Chưa có mô tả chi tiết.',
       requirements: json['requirements'] ?? json['techStack'] ?? 'Nắm vững kiến thức chuyên ngành.',
       major: json['majorName'] ?? json['major'] ?? 'Công nghệ thông tin',
-      lecturerName: json['lecturerName'] ?? json['supervisorName'] ?? 'Bùi Công Danh',
+      lecturerName: json['supervisorName'] ?? json['lecturerName'] ?? 'Chưa phân công',
       lecturerTitle: json['lecturerTitle'] ?? json['academicTitle'] ?? 'ThS.',
       lecturerEmail: json['lecturerEmail'] ?? json['email'],
       lecturerPhone: json['lecturerPhone'] ?? json['phone'],
-      maxStudents: json['maxStudents'] != null ? int.tryParse(json['maxStudents'].toString()) ?? 0 : 0,
+      maxStudents: json['maxStudentsAllowed'] != null
+          ? int.tryParse(json['maxStudentsAllowed'].toString()) ?? 2
+          : (json['maxStudents'] != null ? int.tryParse(json['maxStudents'].toString()) ?? 2 : 2),
       currentStudents: json['currentStudents'] != null ? int.tryParse(json['currentStudents'].toString()) ?? 0 : 0,
-      status: json['status'] ?? 'open',
+      status: json['status'] ?? 'Open',
       isMyTopic: json['isMyTopic'] == true,
+      registeredGroupId: json['groupId']?.toString(),
       registeredGroupName: json['groupName'] ?? json['registeredGroupName'],
       periodName: json['periodName'] ?? 'Đợt 1 - KLCN - CNTT',
-      researchDirection: json['researchDirection'] ?? json['direction'] ?? 'Tích hợp',
+      researchDirection: json['researchDirection'] ?? json['direction'] ?? 'Ứng dụng',
       targetOutput: json['targetOutput'] ?? 'Hệ thống phần mềm hoàn chỉnh + Báo cáo khóa luận',
     );
   }
@@ -133,6 +167,7 @@ class ThesisTopicModel {
     int? currentStudents,
     String? status,
     bool? isMyTopic,
+    String? registeredGroupId,
     String? registeredGroupName,
     String? periodName,
     String? researchDirection,
@@ -154,6 +189,7 @@ class ThesisTopicModel {
       currentStudents: currentStudents ?? this.currentStudents,
       status: status ?? this.status,
       isMyTopic: isMyTopic ?? this.isMyTopic,
+      registeredGroupId: registeredGroupId ?? this.registeredGroupId,
       registeredGroupName: registeredGroupName ?? this.registeredGroupName,
       periodName: periodName ?? this.periodName,
       researchDirection: researchDirection ?? this.researchDirection,

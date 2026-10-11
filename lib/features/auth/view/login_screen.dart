@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/localization/app_language_service.dart';
 import '../../../core/utils/storage_service.dart';
+import '../../../core/widgets/app_toast.dart';
 import '../../main_layout/view/main_layout_screen.dart';
 import '../logic/auth_service.dart';
 
@@ -42,11 +43,19 @@ class _LoginScreenState extends State<LoginScreen> {
     final password = _passwordController.text;
 
     if (username.isEmpty) {
-      _showNotification(tr('username_empty'), isError: true);
+      AppToast.showError(
+        context,
+        tr('username_empty'),
+        title: 'Chưa nhập thông tin',
+      );
       return;
     }
     if (password.isEmpty) {
-      _showNotification(tr('password_empty'), isError: true);
+      AppToast.showError(
+        context,
+        tr('password_empty'),
+        title: 'Chưa nhập thông tin',
+      );
       return;
     }
 
@@ -62,13 +71,14 @@ class _LoginScreenState extends State<LoginScreen> {
         _isLoading = false;
       });
 
-      _showNotification(
-        'Đăng nhập thành công!\nXin chào ${result.user.fullName}',
-        isError: false,
+      AppToast.showSuccess(
+        context,
+        'Xin chào ${result.user.fullName}!',
+        title: 'Đăng nhập thành công',
       );
 
       // Chuyển màn hình vào MainLayout theo vai trò
-      await Future.delayed(const Duration(milliseconds: 600));
+      await Future.delayed(const Duration(milliseconds: 700));
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
@@ -82,38 +92,15 @@ class _LoginScreenState extends State<LoginScreen> {
       });
 
       final errorMsg = e.toString().replaceFirst('Exception: ', '');
-      _showNotification(errorMsg, isError: true);
+      AppToast.showError(
+        context,
+        errorMsg,
+        title: 'Đăng nhập thất bại',
+      );
     }
   }
 
-  void _showNotification(String message, {required bool isError}) {
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(
-              isError ? Icons.error_outline_rounded : Icons.check_circle_outline_rounded,
-              color: Colors.white,
-              size: 24,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                message,
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white),
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: isError ? const Color(0xFFEF4444) : const Color(0xFF10B981),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: const EdgeInsets.all(16),
-        duration: const Duration(seconds: 4),
-      ),
-    );
-  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -309,7 +296,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 borderRadius: BorderRadius.circular(24),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: const Color(0xFF0B519C).withOpacity(0.08),
+                                    color: const Color(0xFF0B519C).withValues(alpha: 0.08),
                                     blurRadius: 28,
                                     offset: const Offset(0, 10),
                                   ),
@@ -440,7 +427,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                             borderRadius: BorderRadius.circular(12),
                                             boxShadow: [
                                               BoxShadow(
-                                                color: const Color(0xFF0284C7).withOpacity(0.35),
+                                                color: const Color(0xFF0284C7).withValues(alpha: 0.35),
                                                 blurRadius: 12,
                                                 offset: const Offset(0, 4),
                                               ),
@@ -495,7 +482,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                           border: Border.all(color: const Color(0xFFBAE6FD), width: 1.5),
                                           boxShadow: [
                                             BoxShadow(
-                                              color: Colors.black.withOpacity(0.03),
+                                              color: Colors.black.withValues(alpha: 0.03),
                                               blurRadius: 6,
                                             ),
                                           ],
@@ -508,7 +495,11 @@ class _LoginScreenState extends State<LoginScreen> {
                                             size: 24,
                                           ),
                                           onPressed: () {
-                                            _showNotification('Tính năng Đăng nhập sinh trắc học đang phát triển!', isError: false);
+                                            AppToast.showInfo(
+                                              context,
+                                              'Tính năng Đăng nhập sinh trắc học đang được phát triển.',
+                                              title: 'Tính năng sắp ra mắt',
+                                            );
                                           },
                                         ),
                                       ),
