@@ -596,7 +596,7 @@ class _LecturerWeeklyReportListScreenState extends State<LecturerWeeklyReportLis
                               ),
                               SizedBox(height: 2),
                               Text(
-                                'Lộ trình 12 tuần • Nhóm trưởng nộp báo cáo',
+                                'Lộ trình tiến độ tuần • Nhóm trưởng nộp báo cáo',
                                 style: TextStyle(fontSize: 11, color: Color(0xFF3B82F6)),
                               ),
                             ],
@@ -610,7 +610,7 @@ class _LecturerWeeklyReportListScreenState extends State<LecturerWeeklyReportLis
                             border: Border.all(color: const Color(0xFF93C5FD)),
                           ),
                           child: const Text(
-                            '12 tuần',
+                            'Kế hoạch tuần',
                             style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF2563EB)),
                           ),
                         ),

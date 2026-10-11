@@ -66,7 +66,7 @@ class _LecturerWeeklyTimelineScreenState extends State<LecturerWeeklyTimelineScr
             // 3. DANH SÁCH 12 TUẦN TIMELINE (HIỂN THỊ LIỀN MẠCH, KHÔNG PHÂN LOẠI)
             Expanded(
               child: _isLoading
-                  ? const Center(child: HuitLoading(size: 46, message: 'Đang tải lộ trình 12 tuần...'))
+                  ? const Center(child: HuitLoading(size: 46, message: 'Đang tải lộ trình tiến độ tuần...'))
                   : _allWeeks.isEmpty
                       ? _buildEmptyState()
                       : RefreshIndicator(
@@ -118,11 +118,13 @@ class _LecturerWeeklyTimelineScreenState extends State<LecturerWeeklyTimelineScr
               onPressed: () => Navigator.pop(context),
               tooltip: 'Quay lại',
             ),
-            const Expanded(
+            Expanded(
               child: Text(
-                'LỘ TRÌNH TIẾN ĐỘ 12 TUẦN',
+                _allWeeks.isNotEmpty
+                    ? 'LỘ TRÌNH TIẾN ĐỘ ${_allWeeks.length} TUẦN'
+                    : 'LỘ TRÌNH TIẾN ĐỘ TUẦN',
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 14.5,
                   fontWeight: FontWeight.w800,
@@ -249,7 +251,7 @@ class _LecturerWeeklyTimelineScreenState extends State<LecturerWeeklyTimelineScr
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      '$_approvedCount/12 tuần đạt',
+                      '$_approvedCount/${_allWeeks.isNotEmpty ? _allWeeks.length : 0} tuần đạt',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 10.5,
@@ -621,9 +623,9 @@ class _LecturerWeeklyTimelineScreenState extends State<LecturerWeeklyTimelineScr
               ),
             ),
             const SizedBox(height: 4),
-            const Text(
-              'Hãy chọn tab "Tất cả" để xem toàn bộ 12 tuần.',
-              style: TextStyle(fontSize: 12.5, color: Color(0xFF64748B)),
+            Text(
+              'Hãy chọn tab "Tất cả" để xem toàn bộ ${_allWeeks.isNotEmpty ? "${_allWeeks.length} " : ""}tuần.',
+              style: const TextStyle(fontSize: 12.5, color: Color(0xFF64748B)),
             ),
           ],
         ),
