@@ -44,8 +44,16 @@ class NotificationService {
       ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
-        return data.map((json) => AppNotification.fromJson(json)).toList();
+        final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+        if (decoded is List) {
+          final List<AppNotification> list = [];
+          for (final item in decoded) {
+            if (item is Map) {
+              list.add(AppNotification.fromJson(item));
+            }
+          }
+          return list;
+        }
       }
     } catch (_) {}
     return [];

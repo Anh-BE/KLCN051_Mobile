@@ -23,20 +23,26 @@ class AppNotification {
     required this.timeAgo,
   });
 
-  factory AppNotification.fromJson(Map<String, dynamic> json) {
+  factory AppNotification.fromJson(Map<dynamic, dynamic> json) {
+    int parseId(dynamic val) {
+      if (val is int) return val;
+      if (val is String) return int.tryParse(val) ?? 0;
+      return 0;
+    }
+
     return AppNotification(
-      notificationId: json['notificationId'] ?? 0,
-      userId: json['userId'] ?? 0,
-      title: json['title'] ?? '',
-      message: json['message'] ?? '',
-      type: json['type'] ?? 'info',
-      category: json['category'] ?? 'general',
-      actionUrl: json['actionUrl'],
-      isRead: json['isRead'] ?? false,
+      notificationId: parseId(json['notificationId']),
+      userId: parseId(json['userId']),
+      title: json['title']?.toString() ?? '',
+      message: json['message']?.toString() ?? '',
+      type: json['type']?.toString() ?? 'info',
+      category: json['category']?.toString() ?? 'general',
+      actionUrl: json['actionUrl']?.toString(),
+      isRead: json['isRead'] == true,
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now()
           : DateTime.now(),
-      timeAgo: json['timeAgo'] ?? '',
+      timeAgo: json['timeAgo']?.toString() ?? '',
     );
   }
 
