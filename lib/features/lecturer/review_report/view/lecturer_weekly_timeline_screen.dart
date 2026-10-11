@@ -23,8 +23,6 @@ class _LecturerWeeklyTimelineScreenState extends State<LecturerWeeklyTimelineScr
   final WeeklyReportService _service = WeeklyReportService();
 
   List<WeeklyTimelineItemModel> _allWeeks = [];
-  List<WeeklyTimelineItemModel> _filteredWeeks = [];
-  String _selectedFilter = 'all'; // 'all', 'pending', 'approved', 'not_submitted'
   bool _isLoading = true;
 
   @override
@@ -43,27 +41,12 @@ class _LecturerWeeklyTimelineScreenState extends State<LecturerWeeklyTimelineScr
     if (mounted) {
       setState(() {
         _allWeeks = data;
-        _applyFilter();
         _isLoading = false;
       });
     }
   }
 
-  void _applyFilter() {
-    List<WeeklyTimelineItemModel> list = List.from(_allWeeks);
-    if (_selectedFilter == 'pending') {
-      list = list.where((w) => w.isPending).toList();
-    } else if (_selectedFilter == 'approved') {
-      list = list.where((w) => w.isApproved).toList();
-    } else if (_selectedFilter == 'not_submitted') {
-      list = list.where((w) => w.isNotSubmitted || w.isOverdue).toList();
-    }
-    _filteredWeeks = list;
-  }
-
-  int get _pendingCount => _allWeeks.where((w) => w.isPending).length;
   int get _approvedCount => _allWeeks.where((w) => w.isApproved).length;
-  int get _notSubmittedCount => _allWeeks.where((w) => w.isNotSubmitted || w.isOverdue).length;
 
   @override
   Widget build(BuildContext context) {
@@ -78,26 +61,23 @@ class _LecturerWeeklyTimelineScreenState extends State<LecturerWeeklyTimelineScr
             // 2. THẺ TÓM TẮT ĐỀ TÀI & SINH VIÊN ĐẠI DIỆN NỘP (CỐ ĐỊNH NHÓM TRƯỞNG)
             _buildThesisSummaryCard(),
 
-            // 3. TAB LỌC TRẠNG THÁI TUẦN
-            _buildFilterTabs(),
-
             const SizedBox(height: 6),
 
-            // 4. DANH SÁCH 12 TUẦN TIMELINE
+            // 3. DANH SÁCH 12 TUẦN TIMELINE (HIỂN THỊ LIỀN MẠCH, KHÔNG PHÂN LOẠI)
             Expanded(
               child: _isLoading
                   ? const Center(child: HuitLoading(size: 46, message: 'Đang tải lộ trình 12 tuần...'))
-                  : _filteredWeeks.isEmpty
+                  : _allWeeks.isEmpty
                       ? _buildEmptyState()
                       : RefreshIndicator(
                           onRefresh: _loadTimeline,
                           color: const Color(0xFF0F766E),
                           child: ListView.builder(
                             padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                            itemCount: _filteredWeeks.length,
+                            itemCount: _allWeeks.length,
                             itemBuilder: (context, index) {
-                              final item = _filteredWeeks[index];
-                              final isLast = index == _filteredWeeks.length - 1;
+                              final item = _allWeeks[index];
+                              final isLast = index == _allWeeks.length - 1;
                               return _buildTimelineItem(item, isLast);
                             },
                           ),
@@ -286,61 +266,7 @@ class _LecturerWeeklyTimelineScreenState extends State<LecturerWeeklyTimelineScr
     );
   }
 
-  // 3. Tab lọc trạng thái tuần
-  Widget _buildFilterTabs() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 6, 16, 2),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
-        child: Row(
-          children: [
-            _buildTabChip('all', 'Tất cả (${_allWeeks.length})'),
-            const SizedBox(width: 8),
-            _buildTabChip('pending', 'Chờ duyệt ($_pendingCount)', badgeColor: const Color(0xFFF59E0B)),
-            const SizedBox(width: 8),
-            _buildTabChip('approved', 'Đã duyệt ($_approvedCount)', badgeColor: const Color(0xFF10B981)),
-            const SizedBox(width: 8),
-            _buildTabChip('not_submitted', 'Chưa nộp ($_notSubmittedCount)'),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTabChip(String key, String label, {Color? badgeColor}) {
-    final isSelected = _selectedFilter == key;
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedFilter = key;
-          _applyFilter();
-        });
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF0F766E) : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected ? const Color(0xFF0F766E) : const Color(0xFFCBD5E1),
-            width: 1,
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 11.5,
-            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-            color: isSelected ? Colors.white : const Color(0xFF475569),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // 4. Timeline item component
+  // 3. Timeline item component
   Widget _buildTimelineItem(WeeklyTimelineItemModel item, bool isLast) {
     return IntrinsicHeight(
       child: Row(
