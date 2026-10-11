@@ -1,15 +1,50 @@
 import 'package:flutter/material.dart';
 import '../../auth/model/user_model.dart';
+import '../../notification/logic/notification_service.dart';
+import '../../notification/view/notification_sheet.dart';
 import '../review_report/view/lecturer_weekly_report_list_screen.dart';
 import '../topic/view/lecturer_topic_list_screen.dart';
 
-class LecturerHomeView extends StatelessWidget {
+class LecturerHomeView extends StatefulWidget {
   final UserModel user;
 
   const LecturerHomeView({super.key, required this.user});
 
   @override
+  State<LecturerHomeView> createState() => _LecturerHomeViewState();
+}
+
+class _LecturerHomeViewState extends State<LecturerHomeView> {
+  final NotificationService _notificationService = NotificationService();
+  int _unreadCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUnreadCount();
+  }
+
+  Future<void> _fetchUnreadCount() async {
+    final count = await _notificationService.getUnreadCount();
+    if (mounted) {
+      setState(() {
+        _unreadCount = count;
+      });
+    }
+  }
+
+  void _openNotifications() {
+    NotificationSheet.show(
+      context,
+      user: widget.user,
+      onNotificationChanged: _fetchUnreadCount,
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final user = widget.user;
+
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       child: Column(
@@ -72,14 +107,46 @@ class LecturerHomeView extends StatelessWidget {
                     ],
                   ),
                 ),
-                // Quả chuông thông báo
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.18),
-                    shape: BoxShape.circle,
+                // Quả chuông thông báo có badge
+                InkWell(
+                  onTap: _openNotifications,
+                  borderRadius: BorderRadius.circular(20),
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.18),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 24),
+                      ),
+                      if (_unreadCount > 0)
+                        Positioned(
+                          top: -2,
+                          right: -2,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEF4444),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: Colors.white, width: 1.5),
+                            ),
+                            constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                            child: Text(
+                              _unreadCount > 99 ? '99+' : '$_unreadCount',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
-                  child: const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 24),
                 ),
               ],
             ),
@@ -87,7 +154,7 @@ class LecturerHomeView extends StatelessWidget {
 
           const SizedBox(height: 18),
 
-          // 2. LƯỚI 4 CHỨC NĂNG TRỌNG TÂM CỦA GIẢNG VIÊN (THEO POSTER MA TRẬN)
+          // 2. LƯỚI CÁC CHỨC NĂNG TRỌNG TÂM CỦA GIẢNG VIÊN
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Container(
@@ -119,7 +186,7 @@ class LecturerHomeView extends StatelessWidget {
                   const SizedBox(height: 18),
 
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
                       _buildQuickAction(
                         icon: Icons.list_alt_rounded,
@@ -150,25 +217,18 @@ class LecturerHomeView extends StatelessWidget {
                         },
                       ),
                       _buildQuickAction(
-                        icon: Icons.rate_review_outlined,
-                        label: 'Phản hồi tiến độ',
-                        bgColor: const Color(0xFFFFF7ED),
-                        iconColor: const Color(0xFFEA580C),
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => LecturerWeeklyReportListScreen(user: user),
-                            ),
-                          );
-                        },
-                      ),
-                      _buildQuickAction(
                         icon: Icons.edit_note_rounded,
                         label: 'Nhập điểm CĐR',
                         bgColor: const Color(0xFFFAF5FF),
                         iconColor: const Color(0xFF9333EA),
-                        onTap: () {},
+                        onTap: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Chức năng nhập điểm chuẩn đầu ra đang được hoàn thiện!'),
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                        },
                       ),
                     ],
                   ),
@@ -203,10 +263,10 @@ class LecturerHomeView extends StatelessWidget {
                 const SizedBox(width: 14),
                 Expanded(
                   child: _buildStatCard(
-                    '4',
-                    'Báo cáo chờ duyệt',
-                    Icons.pending_actions_rounded,
-                    const Color(0xFFF59E0B),
+                    '100%',
+                    'Tiến độ chung',
+                    Icons.trending_up_rounded,
+                    const Color(0xFF16A34A),
                     onTap: () {
                       Navigator.push(
                         context,
@@ -220,21 +280,75 @@ class LecturerHomeView extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 24),
+
+          const SizedBox(height: 18),
+
+          // 4. BANNER THÔNG TIN HƯỚNG DẪN TIẾN ĐỘ
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF0F766E), Color(0xFF115E59)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.info_outline_rounded, color: Colors.white, size: 26),
+                  ),
+                  const SizedBox(width: 14),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Theo dõi báo cáo tiến độ tuần',
+                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          'Giảng viên duyệt kế hoạch tuần và chấm điểm nhận xét báo cáo định kỳ cho các nhóm sinh viên tại mục Xem báo cáo tuần.',
+                          style: TextStyle(color: Colors.white70, fontSize: 12, height: 1.3),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 30),
         ],
       ),
     );
   }
 
-  Widget _buildStatCard(String value, String label, IconData icon, Color color, {VoidCallback? onTap}) {
+  Widget _buildStatCard(
+    String value,
+    String label,
+    IconData icon,
+    Color color, {
+    VoidCallback? onTap,
+  }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(16),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.04),
@@ -268,12 +382,12 @@ class LecturerHomeView extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(14),
       child: SizedBox(
-        width: 78,
+        width: 88,
         child: Column(
           children: [
             Container(
-              width: 52,
-              height: 52,
+              width: 54,
+              height: 54,
               decoration: BoxDecoration(
                 color: bgColor,
                 borderRadius: BorderRadius.circular(16),
@@ -287,10 +401,10 @@ class LecturerHomeView extends StatelessWidget {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                fontSize: 11.5,
+                fontSize: 12,
                 fontWeight: FontWeight.w600,
                 color: Color(0xFF334155),
-                height: 1.2,
+                height: 1.25,
               ),
             ),
           ],
