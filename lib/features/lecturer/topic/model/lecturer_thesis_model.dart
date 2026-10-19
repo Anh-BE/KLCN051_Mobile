@@ -79,7 +79,7 @@ class LecturerThesisModel {
   bool get isRejected =>
       status.toLowerCase().contains('reject') ||
       status.toLowerCase().contains('tuchoi');
-  bool get hasGroup => registeredGroups.isNotEmpty && registeredGroups.first.memberCount > 0;
+  bool get hasGroup => registeredGroups.isNotEmpty;
 
   LecturerThesisProgressModel toProgressModel() {
     final group = registeredGroups.isNotEmpty ? registeredGroups.first : null;

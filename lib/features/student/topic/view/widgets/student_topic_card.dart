@@ -16,7 +16,6 @@ class StudentTopicCard extends StatelessWidget {
   });
 
   static const Color _primaryBlue = Color(0xFF1A73E8);
-  static const Color _textGreen = Color(0xFF10B981);
 
   Widget _buildPillTag(String label, Color tagBgBlue) {
     return Container(
@@ -45,32 +44,10 @@ class StudentTopicCard extends StatelessWidget {
     final textSecondary = colors.textSecondary;
     final textMuted = colors.textMuted;
     final tagBgBlue = colors.isDark ? const Color(0xFF1E293B) : const Color(0xFFEEF5FE);
-    final tagBgGreen = colors.isDark ? const Color(0xFF143022) : const Color(0xFFEBF8F2);
 
     final isMy = topic.isRegisteredByMyGroup(myGroupId);
     final isTakenByOther = topic.isRegisteredByOther(myGroupId);
-
-    Color tagBg;
-    Color tagText;
-    String tagLabel;
-
-    if (isMy) {
-      tagBg = const Color(0xFFEEF5FE);
-      tagText = const Color(0xFF0072E8);
-      tagLabel = 'ĐÃ ĐĂNG KÝ';
-    } else if (isTakenByOther) {
-      tagBg = const Color(0xFFFFF7ED);
-      tagText = const Color(0xFFEA580C);
-      tagLabel = 'ĐÃ CÓ NHÓM';
-    } else if (topic.isOpen) {
-      tagBg = tagBgGreen;
-      tagText = _textGreen;
-      tagLabel = 'MỞ ĐĂNG KÝ';
-    } else {
-      tagBg = const Color(0xFFF1F5F9);
-      tagText = textSecondary;
-      tagLabel = 'ĐÃ ĐÓNG';
-    }
+    final hasGroup = topic.hasGroup || isMy || isTakenByOther;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -97,7 +74,7 @@ class StudentTopicCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Hàng 1: Mã đề tài (trái) + Trạng thái đề tài (phải)
+                // Hàng 1: Mã đề tài (trái) + Đã duyệt & Nút trạng thái nhóm (phải)
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.center,
@@ -111,20 +88,77 @@ class StudentTopicCard extends StatelessWidget {
                         letterSpacing: 0.2,
                       ),
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3.5),
-                      decoration: BoxDecoration(
-                        color: tagBg,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        tagLabel,
-                        style: TextStyle(
-                          color: tagText,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12,
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Badge "ĐÃ DUYỆT"
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                          decoration: BoxDecoration(
+                            color: colors.isDark ? const Color(0xFF143022) : const Color(0xFFD1FAE5),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.check_circle_rounded,
+                                size: 12,
+                                color: colors.isDark ? const Color(0xFF4ADE80) : const Color(0xFF065F46),
+                              ),
+                              const SizedBox(width: 3.5),
+                              Text(
+                                'ĐÃ DUYỆT',
+                                style: TextStyle(
+                                  color: colors.isDark ? const Color(0xFF4ADE80) : const Color(0xFF065F46),
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
+                        const SizedBox(width: 6),
+                        // Nút/Badge "Có nhóm" hoặc "Chưa có nhóm"
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                          decoration: BoxDecoration(
+                            color: hasGroup
+                                ? (colors.isDark ? const Color(0xFF1E293B) : const Color(0xFFEFF6FF))
+                                : (colors.isDark ? const Color(0xFF1E222A) : const Color(0xFFF1F5F9)),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: hasGroup
+                                  ? (colors.isDark ? const Color(0xFF3B82F6) : const Color(0xFFBFDBFE))
+                                  : (colors.isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1)),
+                              width: 1,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                hasGroup ? Icons.groups_rounded : Icons.group_off_outlined,
+                                size: 12.5,
+                                color: hasGroup
+                                    ? (colors.isDark ? const Color(0xFF60A5FA) : const Color(0xFF0072E8))
+                                    : textSecondary,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                hasGroup ? 'Có nhóm' : 'Chưa có nhóm',
+                                style: TextStyle(
+                                  color: hasGroup
+                                      ? (colors.isDark ? const Color(0xFF60A5FA) : const Color(0xFF0072E8))
+                                      : textSecondary,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),

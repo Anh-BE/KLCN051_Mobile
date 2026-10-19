@@ -160,7 +160,7 @@ class StudentGroupService {
       debugPrint('StudentGroupService: getCurrentPeriodId fallback to default: $e');
     }
 
-    _cachedPeriodId = 2; // Mặc định đợt 2 theo CSDL hệ thống
+    _cachedPeriodId = 1; // Mặc định đợt 1 theo CSDL hệ thống
     return _cachedPeriodId!;
   }
 

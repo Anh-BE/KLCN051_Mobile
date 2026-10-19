@@ -10,8 +10,17 @@ class ApiEndpoints {
       if (host.isNotEmpty && host != 'localhost' && host != '127.0.0.1') {
         return 'http://$host:5293/api';
       }
-      return 'http://localhost:5293/api';
+      return 'http://127.0.0.1:5293/api';
     }
+
+    // Dành cho Windows Desktop, macOS, Linux, iOS Simulator
+    if (defaultTargetPlatform == TargetPlatform.windows ||
+        defaultTargetPlatform == TargetPlatform.macOS ||
+        defaultTargetPlatform == TargetPlatform.linux ||
+        defaultTargetPlatform == TargetPlatform.iOS) {
+      return 'http://127.0.0.1:5293/api';
+    }
+
     // Dành cho Android Emulator
     return 'http://10.0.2.2:5293/api';
   }

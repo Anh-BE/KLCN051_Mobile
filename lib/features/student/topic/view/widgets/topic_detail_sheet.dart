@@ -294,15 +294,219 @@ class TopicDetailSheet extends StatelessWidget {
                     ),
                     style: const TextStyle(fontSize: 14),
                   ),
+                  const SizedBox(height: 22),
 
-                  const SizedBox(height: 28),
-                ],
+                    // Mục 4: Thông tin Nhóm thực hiện
+                    _buildSectionHeader('Nhóm thực hiện', textPrimary),
+                    const SizedBox(height: 10),
+                    _buildGroupInfoSection(
+                      context: context,
+                      colors: colors,
+                      sectionBoxBg: sectionBoxBg,
+                      borderSubtle: borderSubtle,
+                      textPrimary: textPrimary,
+                      textSecondary: textSecondary,
+                    ),
+
+                    const SizedBox(height: 28),
+                  ],
+                ),
               ),
             ),
-          ),
 
           // Nút Đăng ký ở dưới đáy Modal
           _buildBottomAction(context, cardBg, borderSubtle),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGroupInfoSection({
+    required BuildContext context,
+    required AppColors colors,
+    required Color sectionBoxBg,
+    required Color borderSubtle,
+    required Color textPrimary,
+    required Color textSecondary,
+  }) {
+    final isMy = topic.isRegisteredByMyGroup(myGroup?.id);
+    final isTakenByOther = topic.isRegisteredByOther(myGroup?.id);
+    final hasGroup = topic.hasGroup || isMy || isTakenByOther;
+
+    if (!hasGroup) {
+      // TRƯỜNG HỢP: CHƯA CÓ NHÓM
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: sectionBoxBg,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: borderSubtle.withValues(alpha: 0.6)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: colors.isDark ? const Color(0xFF1E222A) : const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.group_off_outlined, color: Color(0xFF94A3B8), size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Chưa có nhóm',
+                    style: TextStyle(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w700,
+                      color: textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Đề tài này hiện chưa có nhóm sinh viên nào đăng ký.',
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      color: textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // TRƯỜNG HỢP: CÓ NHÓM
+    String groupName = '';
+    if (isMy && myGroup != null) {
+      groupName = myGroup!.name;
+    } else if (topic.registeredGroupName != null && topic.registeredGroupName!.trim().isNotEmpty) {
+      groupName = topic.registeredGroupName!;
+    } else {
+      groupName = 'Nhóm sinh viên thực hiện';
+    }
+
+    List<String> members = topic.getDisplayMemberNames(
+      fallbackMembers: isMy && myGroup != null
+          ? myGroup!.members.map((m) => m.fullName).toList()
+          : null,
+    );
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: sectionBoxBg,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: borderSubtle.withValues(alpha: 0.6)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEFF6FF),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.groups_rounded, color: Color(0xFF0072E8), size: 20),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Tên nhóm:',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF64748B),
+                      ),
+                    ),
+                    Text(
+                      groupName,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEFF6FF),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFBFDBFE)),
+                ),
+                child: const Text(
+                  'Có nhóm',
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF0072E8),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Divider(height: 1, color: borderSubtle),
+          const SizedBox(height: 10),
+          const Text(
+            'Thành viên nhóm:',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF64748B),
+            ),
+          ),
+          const SizedBox(height: 6),
+          if (members.isNotEmpty)
+            ...members.map(
+              (memberName) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 3),
+                child: Row(
+                  children: [
+                    const Icon(Icons.person_outline_rounded, size: 16, color: Color(0xFF0072E8)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        memberName,
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w600,
+                          color: textPrimary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(
+                'Đã có thành viên tham gia nhóm.',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: textSecondary,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
         ],
       ),
     );

@@ -16,6 +16,7 @@ class ThesisTopicModel {
   final bool isMyTopic;
   final String? registeredGroupId;
   final String? registeredGroupName;
+  final List<String> memberNames;
   final String periodName;
   final String researchDirection; // Hướng đề tài: 'Tích hợp', 'Nghiên cứu', 'Ứng dụng'
   final String? targetOutput;
@@ -38,16 +39,21 @@ class ThesisTopicModel {
     this.isMyTopic = false,
     this.registeredGroupId,
     this.registeredGroupName,
+    this.memberNames = const [],
     this.periodName = 'Đợt 1 - KLCN - CNTT',
     this.researchDirection = 'Ứng dụng',
     this.targetOutput,
   });
 
+  bool get hasGroup {
+    return (registeredGroupId != null && registeredGroupId!.isNotEmpty && registeredGroupId != '0') ||
+        (registeredGroupName != null && registeredGroupName!.trim().isNotEmpty);
+  }
+
   bool get isOpen {
     final s = status.toLowerCase();
     final isApprovedOrOpen = s == 'open' || s == 'approved' || s == 'available';
-    final hasNoGroup = registeredGroupId == null || registeredGroupId!.isEmpty || registeredGroupId == '0';
-    return isApprovedOrOpen && hasNoGroup;
+    return isApprovedOrOpen && !hasGroup;
   }
 
   bool isRegisteredByOther(String? myGroupId) {
@@ -99,9 +105,28 @@ class ThesisTopicModel {
     return lecturerName;
   }
 
+  List<String> getDisplayMemberNames({List<String>? fallbackMembers}) {
+    if (memberNames.isNotEmpty) return memberNames;
+    if (fallbackMembers != null && fallbackMembers.isNotEmpty) {
+      return fallbackMembers;
+    }
+    return [];
+  }
+
   factory ThesisTopicModel.fromJson(Map<String, dynamic> json) {
     final rawId = (json['thesisId'] ?? json['id'] ?? '').toString();
     final padId = rawId.isNotEmpty && int.tryParse(rawId) != null ? rawId.padLeft(3, '0') : '001';
+
+    var rawMembers = json['memberNames'] as List? ?? json['MemberNames'] as List? ?? json['members'] as List? ?? [];
+    List<String> parsedMembers = [];
+    for (var m in rawMembers) {
+      if (m is String && m.trim().isNotEmpty) {
+        parsedMembers.add(m.trim());
+      } else if (m is Map) {
+        final name = (m['fullName'] ?? m['FullName'] ?? m['name'] ?? m['studentName'] ?? '').toString();
+        if (name.trim().isNotEmpty) parsedMembers.add(name.trim());
+      }
+    }
 
     return ThesisTopicModel(
       id: rawId,
@@ -123,6 +148,7 @@ class ThesisTopicModel {
       isMyTopic: json['isMyTopic'] == true,
       registeredGroupId: json['groupId']?.toString(),
       registeredGroupName: json['groupName'] ?? json['registeredGroupName'],
+      memberNames: parsedMembers,
       periodName: json['periodName'] ?? 'Đợt 1 - KLCN - CNTT',
       researchDirection: json['researchDirection'] ?? json['direction'] ?? 'Ứng dụng',
       targetOutput: json['targetOutput'] ?? 'Hệ thống phần mềm hoàn chỉnh + Báo cáo khóa luận',
@@ -147,6 +173,7 @@ class ThesisTopicModel {
       'status': status,
       'isMyTopic': isMyTopic,
       'registeredGroupName': registeredGroupName,
+      'memberNames': memberNames,
       'periodName': periodName,
       'researchDirection': researchDirection,
       'targetOutput': targetOutput,
@@ -171,6 +198,7 @@ class ThesisTopicModel {
     bool? isMyTopic,
     String? registeredGroupId,
     String? registeredGroupName,
+    List<String>? memberNames,
     String? periodName,
     String? researchDirection,
     String? targetOutput,
@@ -193,6 +221,7 @@ class ThesisTopicModel {
       isMyTopic: isMyTopic ?? this.isMyTopic,
       registeredGroupId: registeredGroupId ?? this.registeredGroupId,
       registeredGroupName: registeredGroupName ?? this.registeredGroupName,
+      memberNames: memberNames ?? this.memberNames,
       periodName: periodName ?? this.periodName,
       researchDirection: researchDirection ?? this.researchDirection,
       targetOutput: targetOutput ?? this.targetOutput,

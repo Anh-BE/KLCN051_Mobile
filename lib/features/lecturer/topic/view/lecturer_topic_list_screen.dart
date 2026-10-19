@@ -639,6 +639,47 @@ class _LecturerTopicListScreenState extends State<LecturerTopicListScreen> {
                     ],
                   ),
                 ),
+                if (statusText == 'ĐÃ DUYỆT') ...[
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: thesis.hasGroup
+                          ? (colors.isDark ? const Color(0xFF1E293B) : const Color(0xFFEFF6FF))
+                          : (colors.isDark ? const Color(0xFF1E222A) : const Color(0xFFF1F5F9)),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: thesis.hasGroup
+                            ? (colors.isDark ? const Color(0xFF3B82F6) : const Color(0xFFBFDBFE))
+                            : (colors.isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1)),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          thesis.hasGroup ? Icons.groups_rounded : Icons.group_off_outlined,
+                          size: 12,
+                          color: thesis.hasGroup
+                              ? (colors.isDark ? const Color(0xFF60A5FA) : const Color(0xFF0072E8))
+                              : colors.textSecondary,
+                        ),
+                        const SizedBox(width: 3.5),
+                        Text(
+                          thesis.hasGroup ? 'Có nhóm' : 'Chưa có nhóm',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            color: thesis.hasGroup
+                                ? (colors.isDark ? const Color(0xFF60A5FA) : const Color(0xFF0072E8))
+                                : colors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -1003,6 +1044,11 @@ class _ThesisDetailBottomSheetState extends State<_ThesisDetailBottomSheet> with
                           style: TextStyle(fontSize: 13.5, height: 1.5, color: colors.textSecondary),
                         ),
                       ),
+                      const SizedBox(height: 18),
+
+                      _buildSectionTitle('Nhóm sinh viên thực hiện:', colors),
+                      const SizedBox(height: 8),
+                      _buildGroupDetailBox(thesis, colors),
                     ],
                   ),
                 ),
@@ -1398,6 +1444,146 @@ class _ThesisDetailBottomSheetState extends State<_ThesisDetailBottomSheet> with
               color: Color(0xFF0284C7),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGroupDetailBox(LecturerThesisModel thesis, AppColors colors) {
+    if (!thesis.hasGroup) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: colors.subCardBg,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: colors.subCardBorder),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: colors.isDark ? const Color(0xFF1E222A) : const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.group_off_outlined, color: Color(0xFF94A3B8), size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Chưa có nhóm',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: colors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Đề tài này hiện chưa có nhóm sinh viên nào đăng ký.',
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final group = thesis.registeredGroups.first;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: colors.subCardBg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colors.subCardBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEFF6FF),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.groups_rounded, color: Color(0xFF0072E8), size: 20),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Tên nhóm:',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF64748B)),
+                    ),
+                    Text(
+                      group.groupName.isNotEmpty ? group.groupName : 'Nhóm sinh viên thực hiện',
+                      style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: colors.textPrimary),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEFF6FF),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFBFDBFE)),
+                ),
+                child: const Text(
+                  'Có nhóm',
+                  style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFF0072E8)),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Divider(height: 1, color: colors.divider),
+          const SizedBox(height: 10),
+          const Text(
+            'Thành viên nhóm:',
+            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
+          ),
+          const SizedBox(height: 6),
+          if (group.members.isNotEmpty)
+            ...group.members.map((m) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 3),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.person_outline_rounded, size: 16, color: Color(0xFF0072E8)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          m.fullName.isNotEmpty ? m.fullName : (m.studentCode.isNotEmpty ? m.studentCode : 'Sinh viên'),
+                          style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: colors.textPrimary),
+                        ),
+                      ),
+                      if (m.role.isNotEmpty)
+                        Text(
+                          m.role,
+                          style: TextStyle(fontSize: 12, color: colors.textSecondary),
+                        ),
+                    ],
+                  ),
+                ))
+          else
+            Text(
+              'Đã có nhóm sinh viên đăng ký.',
+              style: TextStyle(fontSize: 13, color: colors.textSecondary, fontStyle: FontStyle.italic),
+            ),
         ],
       ),
     );
