@@ -3,10 +3,12 @@ import 'package:flutter/material.dart';
 import '../../auth/model/user_model.dart';
 import '../../notification/logic/notification_service.dart';
 import '../../notification/view/notification_sheet.dart';
-import '../review_report/logic/weekly_report_service.dart';
 import '../review_report/view/lecturer_weekly_report_list_screen.dart';
 import '../scoring/view/lecturer_scoring_list_screen.dart';
 import '../topic/view/lecturer_topic_list_screen.dart';
+import '../../../core/widgets/donut_stat_card.dart';
+import '../../dashboard/logic/dashboard_service.dart';
+import '../../dashboard/model/dashboard_stats_models.dart';
 
 
 class LecturerHomeView extends StatefulWidget {
@@ -20,30 +22,38 @@ class LecturerHomeView extends StatefulWidget {
 
 class _LecturerHomeViewState extends State<LecturerHomeView> {
   final NotificationService _notificationService = NotificationService();
-  final WeeklyReportService _weeklyReportService = WeeklyReportService();
+  final DashboardService _dashboardService = DashboardService();
   int _unreadCount = 0;
-  int? _topicCount;
+  LecturerDashboardStats _stats = LecturerDashboardStats();
+  bool _isLoadingStats = true;
   Timer? _pollTimer;
 
   @override
   void initState() {
     super.initState();
     _fetchUnreadCount();
-    _fetchTopicCount();
-    _pollTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+    _loadDashboardStats();
+    _pollTimer = Timer.periodic(const Duration(seconds: 10), (_) {
       if (mounted) _fetchUnreadCount();
     });
   }
 
-  Future<void> _fetchTopicCount() async {
+  Future<void> _loadDashboardStats() async {
     try {
-      final theses = await _weeklyReportService.getApprovedTheses();
+      final data = await _dashboardService.getLecturerStats();
       if (mounted) {
         setState(() {
-          _topicCount = theses.length;
+          _stats = data;
+          _isLoadingStats = false;
         });
       }
-    } catch (_) {}
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _isLoadingStats = false;
+        });
+      }
+    }
   }
 
   @override
@@ -268,46 +278,81 @@ class _LecturerHomeViewState extends State<LecturerHomeView> {
 
           const SizedBox(height: 18),
 
-          // 3. THỐNG KÊ NHANH CỦA GIẢNG VIÊN
+          // 3. BIỂU ĐỒ TRÒN THỐNG KÊ ĐỀ TÀI & HƯỚNG DẪN CỦA GIẢNG VIÊN (CHUẨN THIẾT KẾ DONUT)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _buildStatCard(
-                    _topicCount != null ? '$_topicCount' : '...',
-                    'Đề tài hướng dẫn',
-                    Icons.menu_book_rounded,
-                    const Color(0xFF0284C7),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => LecturerTopicListScreen(user: user),
-                        ),
-                      );
-                    },
+            child: _isLoadingStats
+                ? Container(
+                    height: 180,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                    ),
+                    child: const Center(
+                      child: CircularProgressIndicator(color: Color(0xFF0F766E), strokeWidth: 2.5),
+                    ),
+                  )
+                : DonutStatCard(
+                    title: 'Trạng thái Đề xuất Đề tài',
+                    filterPillText: _stats.periodName,
+                    topSummaryWidget: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.school_rounded, size: 20, color: Color(0xFF0F766E)),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: RichText(
+                              text: TextSpan(
+                                style: const TextStyle(fontSize: 13, color: Color(0xFF334155)),
+                                children: [
+                                  const TextSpan(text: 'Đang hướng dẫn: '),
+                                  TextSpan(
+                                    text: '${_stats.supervisedThesesCount} đề tài',
+                                    style: const TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF0F766E)),
+                                  ),
+                                  TextSpan(
+                                    text: ' (${_stats.supervisedGroupsCount} nhóm) • ',
+                                  ),
+                                  const TextSpan(text: 'Tổng đề xuất: '),
+                                  TextSpan(
+                                    text: '${_stats.totalProposed}',
+                                    style: const TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF1E293B)),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    items: [
+                      DonutStatItem(
+                        value: _stats.approvedCount,
+                        label: 'Được duyệt',
+                        progressPercent: _stats.totalProposed > 0 ? _stats.approvedCount / _stats.totalProposed : 0.0,
+                        color: const Color(0xFF16A34A),
+                      ),
+                      DonutStatItem(
+                        value: _stats.needsRevisionCount,
+                        label: 'Cần chỉnh sửa',
+                        progressPercent: _stats.totalProposed > 0 ? _stats.needsRevisionCount / _stats.totalProposed : 0.0,
+                        color: const Color(0xFFD97706),
+                      ),
+                      DonutStatItem(
+                        value: _stats.rejectedCount,
+                        label: 'Không duyệt',
+                        progressPercent: _stats.totalProposed > 0 ? _stats.rejectedCount / _stats.totalProposed : 0.0,
+                        color: const Color(0xFFEF4444),
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: _buildStatCard(
-                    _topicCount != null ? '$_topicCount' : '...',
-                    'Tiến độ báo cáo',
-                    Icons.pending_actions_rounded,
-                    const Color(0xFFF59E0B),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => LecturerWeeklyReportListScreen(user: user),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
           ),
 
           const SizedBox(height: 18),
@@ -359,43 +404,6 @@ class _LecturerHomeViewState extends State<LecturerHomeView> {
 
           const SizedBox(height: 30),
         ],
-      ),
-    );
-  }
-
-  Widget _buildStatCard(
-    String value,
-    String label,
-    IconData icon,
-    Color color, {
-    VoidCallback? onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, color: color, size: 26),
-            const SizedBox(height: 10),
-            Text(value, style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: color)),
-            const SizedBox(height: 2),
-            Text(label, style: const TextStyle(fontSize: 12.5, color: Color(0xFF64748B), fontWeight: FontWeight.w500)),
-          ],
-        ),
       ),
     );
   }

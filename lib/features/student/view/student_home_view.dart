@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../../core/localization/app_language_service.dart';
+import '../../../core/widgets/donut_stat_card.dart';
 import '../../auth/model/user_model.dart';
+import '../../dashboard/logic/dashboard_service.dart';
+import '../../dashboard/model/dashboard_stats_models.dart';
 import '../group/view/student_group_list_screen.dart';
 import '../group/view/student_manage_group_screen.dart';
 import '../tasks/logic/notification_service.dart';
@@ -10,14 +13,49 @@ import '../tasks/view/student_notification_screen.dart';
 import '../tasks/view/student_task_deadline_screen.dart';
 import '../topic/view/student_topic_list_screen.dart';
 
-class StudentHomeView extends StatelessWidget {
+class StudentHomeView extends StatefulWidget {
   final UserModel user;
   final Function(int)? onTabChange;
 
   const StudentHomeView({super.key, required this.user, this.onTabChange});
 
   @override
+  State<StudentHomeView> createState() => _StudentHomeViewState();
+}
+
+class _StudentHomeViewState extends State<StudentHomeView> {
+  final DashboardService _dashboardService = DashboardService();
+  StudentDashboardStats _stats = StudentDashboardStats();
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStats();
+  }
+
+  Future<void> _loadStats() async {
+    try {
+      final data = await _dashboardService.getStudentStats();
+      if (mounted) {
+        setState(() {
+          _stats = data;
+          _isLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final user = widget.user;
+    final onTabChange = widget.onTabChange;
     final taskService = StudentTaskService();
 
     return SingleChildScrollView(
@@ -279,6 +317,90 @@ child: user.avatarUrl == null || user.avatarUrl!.isEmpty
               },
             ),
           ),
+          const SizedBox(height: 16),
+
+          // 2.5 BIỂU ĐỒ 3 VÒNG TRÒN DONUT THỐNG KÊ TIẾN ĐỘ BÁO CÁO SINH VIÊN (CHUẨN THIẾT KẾ DONUT)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: _isLoading
+                ? Container(
+                    height: 180,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                    ),
+                    child: const Center(
+                      child: CircularProgressIndicator(color: Color(0xFF0072E8), strokeWidth: 2.5),
+                    ),
+                  )
+                : DonutStatCard(
+                    title: 'Tiến độ Báo cáo & Nhiệm vụ',
+                    filterPillText: _stats.periodName,
+                    topSummaryWidget: _stats.hasUpcomingDeadline
+                        ? Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEFF6FF),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: const Color(0xFFBFDBFE)),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.timer_outlined, size: 18, color: Color(0xFF0284C7)),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        _stats.upcomingDeadlineTitle ?? 'Báo cáo tuần',
+                                        style: const TextStyle(
+                                          fontSize: 12.5,
+                                          fontWeight: FontWeight.w700,
+                                          color: Color(0xFF0F172A),
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        'Hạn nộp: ${_stats.upcomingDeadlineTime != null ? "${_stats.upcomingDeadlineTime!.day.toString().padLeft(2, '0')}/${_stats.upcomingDeadlineTime!.month.toString().padLeft(2, '0')} 23:59" : "23:59"} • ${_stats.upcomingRemainingText ?? ""}',
+                                        style: const TextStyle(
+                                          fontSize: 11.5,
+                                          fontWeight: FontWeight.w600,
+                                          color: Color(0xFF0284C7),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        : null,
+                    items: [
+                      DonutStatItem(
+                        value: _stats.submittedWeeks,
+                        label: 'Tuần đã nộp',
+                        progressPercent: _stats.totalWeeks > 0 ? _stats.submittedWeeks / _stats.totalWeeks : 0.0,
+                        color: const Color(0xFF10B981),
+                      ),
+                      DonutStatItem(
+                        value: _stats.unsubmittedWeeks,
+                        label: 'Chưa nộp',
+                        progressPercent: _stats.totalWeeks > 0 ? _stats.unsubmittedWeeks / _stats.totalWeeks : 0.0,
+                        color: const Color(0xFFEA580C),
+                      ),
+                      DonutStatItem(
+                        value: _stats.assignedTasksCount,
+                        label: 'Bài GV đã giao',
+                        progressPercent: _stats.totalWeeks > 0 ? 1.0 : 0.0,
+                        color: const Color(0xFF0072E8),
+                      ),
+                    ],
+                  ),
+          ),
 
           const SizedBox(height: 16),
 
@@ -374,7 +496,7 @@ child: user.avatarUrl == null || user.avatarUrl!.isEmpty
                               ),
                             );
                             if (targetIndex != null && onTabChange != null) {
-                              onTabChange!(targetIndex);
+                              onTabChange(targetIndex);
                             }
                           },
                         ),
@@ -396,7 +518,7 @@ child: user.avatarUrl == null || user.avatarUrl!.isEmpty
                               ),
                             );
                             if (targetIndex != null && onTabChange != null) {
-                              onTabChange!(targetIndex);
+                              onTabChange(targetIndex);
                             }
                           },
                         ),
