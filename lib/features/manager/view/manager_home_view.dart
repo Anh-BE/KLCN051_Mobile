@@ -18,7 +18,8 @@ class ManagerHomeView extends StatefulWidget {
 
 class _ManagerHomeViewState extends State<ManagerHomeView> {
   final DashboardService _dashboardService = DashboardService();
-  AdminDashboardStats _stats = AdminDashboardStats();
+  AdminDashboardStats? _stats = AdminDashboardStats();
+  AdminDashboardStats get _safeStats => _stats ?? AdminDashboardStats();
   bool _isLoading = true;
 
   @override
@@ -152,57 +153,62 @@ class _ManagerHomeViewState extends State<ManagerHomeView> {
                       child: CircularProgressIndicator(color: Color(0xFF1D4ED8), strokeWidth: 2.5),
                     ),
                   )
-                : DonutStatCard(
-                    title: 'Tình hình Đề tài & Hướng dẫn Toàn Khoa',
-                    filterPillText: _stats.periodName,
-                    topSummaryWidget: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: colors.isDark ? const Color(0xFF1E293B) : const Color(0xFFEFF6FF),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: colors.isDark ? const Color(0xFF334155) : const Color(0xFFBFDBFE)),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.auto_stories_rounded, size: 20, color: Color(0xFF1D4ED8)),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: RichText(
-                              text: TextSpan(
-                                style: TextStyle(fontSize: 13, color: colors.textPrimary),
-                                children: [
-                                  const TextSpan(text: 'Tổng số đề tài toàn khoa: '),
-                                  TextSpan(
-                                    text: '${_stats.totalTheses} đề tài',
-                                    style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF1D4ED8), fontSize: 14),
+                : Builder(
+                    builder: (context) {
+                      final stats = _stats ?? AdminDashboardStats();
+                      return DonutStatCard(
+                        title: 'Tình hình Đề tài & Hướng dẫn Toàn Khoa',
+                        filterPillText: stats.periodName.isNotEmpty ? stats.periodName : 'HK1 (2026-2027)',
+                        topSummaryWidget: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: colors.isDark ? const Color(0xFF1E293B) : const Color(0xFFEFF6FF),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: colors.isDark ? const Color(0xFF334155) : const Color(0xFFBFDBFE)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.auto_stories_rounded, size: 20, color: Color(0xFF1D4ED8)),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: RichText(
+                                  text: TextSpan(
+                                    style: TextStyle(fontSize: 13, color: colors.textPrimary),
+                                    children: [
+                                      const TextSpan(text: 'Tổng số đề tài toàn khoa: '),
+                                      TextSpan(
+                                        text: '${stats.totalTheses} đề tài',
+                                        style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF1D4ED8), fontSize: 14),
+                                      ),
+                                    ],
                                   ),
-                                ],
+                                ),
                               ),
-                            ),
+                            ],
+                          ),
+                        ),
+                        items: [
+                          DonutStatItem(
+                            value: stats.registeredTheses,
+                            label: 'Được đăng ký',
+                            progressPercent: stats.totalTheses > 0 ? stats.registeredTheses / stats.totalTheses : 0.0,
+                            color: const Color(0xFF2563EB),
+                          ),
+                          DonutStatItem(
+                            value: stats.supervisedTheses,
+                            label: 'Được hướng dẫn',
+                            progressPercent: stats.totalTheses > 0 ? stats.supervisedTheses / stats.totalTheses : 0.0,
+                            color: const Color(0xFF10B981),
+                          ),
+                          DonutStatItem(
+                            value: stats.activeLecturersCount,
+                            label: 'GVHD trong kỳ',
+                            progressPercent: stats.activeLecturersCount > 0 ? 0.8 : 0.0,
+                            color: const Color(0xFF8B5CF6),
                           ),
                         ],
-                      ),
-                    ),
-                    items: [
-                      DonutStatItem(
-                        value: _stats.registeredTheses,
-                        label: 'Được đăng ký',
-                        progressPercent: _stats.totalTheses > 0 ? _stats.registeredTheses / _stats.totalTheses : 0.0,
-                        color: const Color(0xFF2563EB),
-                      ),
-                      DonutStatItem(
-                        value: _stats.supervisedTheses,
-                        label: 'Được hướng dẫn',
-                        progressPercent: _stats.totalTheses > 0 ? _stats.supervisedTheses / _stats.totalTheses : 0.0,
-                        color: const Color(0xFF10B981),
-                      ),
-                      DonutStatItem(
-                        value: _stats.activeLecturersCount,
-                        label: 'GVHD trong kỳ',
-                        progressPercent: _stats.activeLecturersCount > 0 ? 0.8 : 0.0,
-                        color: const Color(0xFF8B5CF6),
-                      ),
-                    ],
+                      );
+                    },
                   ),
           ),
 
@@ -290,9 +296,9 @@ class _ManagerHomeViewState extends State<ManagerHomeView> {
                   _buildProgressRow(
                     colors,
                     'Tỷ lệ đề tài được SV đăng ký',
-                    _stats.totalTheses > 0 ? (_stats.registeredTheses / _stats.totalTheses) : 0.0,
-                    _stats.totalTheses > 0
-                        ? '${((_stats.registeredTheses / _stats.totalTheses) * 100).toStringAsFixed(1)}% (${_stats.registeredTheses}/${_stats.totalTheses})'
+                    _safeStats.totalTheses > 0 ? (_safeStats.registeredTheses / _safeStats.totalTheses) : 0.0,
+                    _safeStats.totalTheses > 0
+                        ? '${((_safeStats.registeredTheses / _safeStats.totalTheses) * 100).toStringAsFixed(1)}% (${_safeStats.registeredTheses}/${_safeStats.totalTheses})'
                         : '0%',
                     const Color(0xFF10B981),
                   ),
@@ -300,9 +306,9 @@ class _ManagerHomeViewState extends State<ManagerHomeView> {
                   _buildProgressRow(
                     colors,
                     'Tỷ lệ đề tài đã có Giảng viên hướng dẫn',
-                    _stats.totalTheses > 0 ? (_stats.supervisedTheses / _stats.totalTheses) : 0.0,
-                    _stats.totalTheses > 0
-                        ? '${((_stats.supervisedTheses / _stats.totalTheses) * 100).toStringAsFixed(1)}% (${_stats.supervisedTheses}/${_stats.totalTheses})'
+                    _safeStats.totalTheses > 0 ? (_safeStats.supervisedTheses / _safeStats.totalTheses) : 0.0,
+                    _safeStats.totalTheses > 0
+                        ? '${((_safeStats.supervisedTheses / _safeStats.totalTheses) * 100).toStringAsFixed(1)}% (${_safeStats.supervisedTheses}/${_safeStats.totalTheses})'
                         : '0%',
                     const Color(0xFF0284C7),
                   ),
@@ -310,8 +316,8 @@ class _ManagerHomeViewState extends State<ManagerHomeView> {
                   _buildProgressRow(
                     colors,
                     'Đội ngũ Giảng viên hướng dẫn tham gia',
-                    _stats.activeLecturersCount > 0 ? 1.0 : 0.0,
-                    '${_stats.activeLecturersCount} Giảng viên',
+                    _safeStats.activeLecturersCount > 0 ? 1.0 : 0.0,
+                    '${_safeStats.activeLecturersCount} Giảng viên',
                     const Color(0xFF8B5CF6),
                   ),
                 ],

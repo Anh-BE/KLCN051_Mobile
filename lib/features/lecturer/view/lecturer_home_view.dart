@@ -26,7 +26,8 @@ class LecturerHomeView extends StatefulWidget {
 
 class _LecturerHomeViewState extends State<LecturerHomeView> {
   final DashboardService _dashboardService = DashboardService();
-  LecturerDashboardStats _stats = LecturerDashboardStats();
+  LecturerDashboardStats? _stats = LecturerDashboardStats();
+  LecturerDashboardStats get _safeStats => _stats ?? LecturerDashboardStats();
   bool _isLoadingStats = true;
 
   UserModel get user => widget.user;
@@ -172,65 +173,70 @@ class _LecturerHomeViewState extends State<LecturerHomeView> {
                           child: CircularProgressIndicator(color: Color(0xFF0072E8), strokeWidth: 2.5),
                         ),
                       )
-                    : DonutStatCard(
-                        title: 'Trạng thái Đề xuất Đề tài',
-                        filterPillText: _stats.periodName,
-                        topSummaryWidget: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: colors.isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: colors.subCardBorder),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.school_rounded, size: 20, color: Color(0xFF0072E8)),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: RichText(
-                                  text: TextSpan(
-                                    style: TextStyle(fontSize: 13, color: colors.textSecondary),
-                                    children: [
-                                      const TextSpan(text: 'Đang hướng dẫn: '),
-                                      TextSpan(
-                                        text: '${_stats.supervisedThesesCount} đề tài',
-                                        style: const TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF0072E8)),
+                    : Builder(
+                        builder: (context) {
+                          final stats = _stats ?? LecturerDashboardStats();
+                          return DonutStatCard(
+                            title: 'Trạng thái Đề xuất Đề tài',
+                            filterPillText: stats.periodName.isNotEmpty ? stats.periodName : 'HK1 (2026-2027)',
+                            topSummaryWidget: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                              decoration: BoxDecoration(
+                                color: colors.isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: colors.subCardBorder),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.school_rounded, size: 20, color: Color(0xFF0072E8)),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: RichText(
+                                      text: TextSpan(
+                                        style: TextStyle(fontSize: 13, color: colors.textSecondary),
+                                        children: [
+                                          const TextSpan(text: 'Đang hướng dẫn: '),
+                                          TextSpan(
+                                            text: '${stats.supervisedThesesCount} đề tài',
+                                            style: const TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF0072E8)),
+                                          ),
+                                          TextSpan(
+                                            text: ' (${stats.supervisedGroupsCount} nhóm) • ',
+                                          ),
+                                          const TextSpan(text: 'Tổng đề xuất: '),
+                                          TextSpan(
+                                            text: '${stats.totalProposed}',
+                                            style: TextStyle(fontWeight: FontWeight.w800, color: colors.textPrimary),
+                                          ),
+                                        ],
                                       ),
-                                      TextSpan(
-                                        text: ' (${_stats.supervisedGroupsCount} nhóm) • ',
-                                      ),
-                                      const TextSpan(text: 'Tổng đề xuất: '),
-                                      TextSpan(
-                                        text: '${_stats.totalProposed}',
-                                        style: TextStyle(fontWeight: FontWeight.w800, color: colors.textPrimary),
-                                      ),
-                                    ],
+                                    ),
                                   ),
-                                ),
+                                ],
+                              ),
+                            ),
+                            items: [
+                              DonutStatItem(
+                                value: stats.approvedCount,
+                                label: 'Được duyệt',
+                                progressPercent: stats.totalProposed > 0 ? stats.approvedCount / stats.totalProposed : 0.0,
+                                color: const Color(0xFF16A34A),
+                              ),
+                              DonutStatItem(
+                                value: stats.needsRevisionCount,
+                                label: 'Cần chỉnh sửa',
+                                progressPercent: stats.totalProposed > 0 ? stats.needsRevisionCount / stats.totalProposed : 0.0,
+                                color: const Color(0xFFD97706),
+                              ),
+                              DonutStatItem(
+                                value: stats.rejectedCount,
+                                label: 'Không duyệt',
+                                progressPercent: stats.totalProposed > 0 ? stats.rejectedCount / stats.totalProposed : 0.0,
+                                color: const Color(0xFFEF4444),
                               ),
                             ],
-                          ),
-                        ),
-                        items: [
-                          DonutStatItem(
-                            value: _stats.approvedCount,
-                            label: 'Được duyệt',
-                            progressPercent: _stats.totalProposed > 0 ? _stats.approvedCount / _stats.totalProposed : 0.0,
-                            color: const Color(0xFF16A34A),
-                          ),
-                          DonutStatItem(
-                            value: _stats.needsRevisionCount,
-                            label: 'Cần chỉnh sửa',
-                            progressPercent: _stats.totalProposed > 0 ? _stats.needsRevisionCount / _stats.totalProposed : 0.0,
-                            color: const Color(0xFFD97706),
-                          ),
-                          DonutStatItem(
-                            value: _stats.rejectedCount,
-                            label: 'Không duyệt',
-                            progressPercent: _stats.totalProposed > 0 ? _stats.rejectedCount / _stats.totalProposed : 0.0,
-                            color: const Color(0xFFEF4444),
-                          ),
-                        ],
+                          );
+                        },
                       ),
               ),
 
@@ -381,7 +387,7 @@ class _LecturerHomeViewState extends State<LecturerHomeView> {
                           Expanded(
                             child: _buildStatCard(
                               context: context,
-                              value: '${_stats.supervisedThesesCount}',
+                              value: '${_safeStats.supervisedThesesCount}',
                               label: 'Đề tài hướng dẫn',
                               icon: Icons.menu_book_rounded,
                               color: const Color(0xFF0284C7),
@@ -399,7 +405,7 @@ class _LecturerHomeViewState extends State<LecturerHomeView> {
                           Expanded(
                             child: _buildStatCard(
                               context: context,
-                              value: '${_stats.approvedCount}',
+                              value: '${_safeStats.approvedCount}',
                               label: 'Đã hoàn thành duyệt',
                               icon: Icons.pending_actions_rounded,
                               color: const Color(0xFFF59E0B),

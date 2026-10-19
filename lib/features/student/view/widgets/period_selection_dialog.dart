@@ -254,7 +254,7 @@ class _PeriodSelectionDialogState extends State<PeriodSelectionDialog> {
 
                                     // Tên đợt khóa luận
                                     Text(
-                                      period.periodName,
+                                      period.periodName.isNotEmpty ? period.periodName : 'Đợt khóa luận',
                                       style: TextStyle(
                                         fontSize: 15,
                                         fontWeight: FontWeight.w700,
