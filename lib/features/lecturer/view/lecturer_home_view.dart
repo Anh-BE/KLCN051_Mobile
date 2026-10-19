@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import '../../../core/localization/app_language_service.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/app_toast.dart';
 import '../../auth/model/user_model.dart';
 import '../../notification/view/notification_bell_button.dart';
 import '../review_report/view/lecturer_weekly_report_list_screen.dart';
+import '../scoring/view/lecturer_scoring_list_screen.dart';
 import '../topic/view/lecturer_topic_list_screen.dart';
+import '../../../core/widgets/donut_stat_card.dart';
+import '../../dashboard/logic/dashboard_service.dart';
+import '../../dashboard/model/dashboard_stats_models.dart';
 
-class LecturerHomeView extends StatelessWidget {
+class LecturerHomeView extends StatefulWidget {
   final UserModel user;
   final Function(int)? onTabChange;
 
@@ -18,12 +21,46 @@ class LecturerHomeView extends StatelessWidget {
   });
 
   @override
+  State<LecturerHomeView> createState() => _LecturerHomeViewState();
+}
+
+class _LecturerHomeViewState extends State<LecturerHomeView> {
+  final DashboardService _dashboardService = DashboardService();
+  LecturerDashboardStats _stats = LecturerDashboardStats();
+  bool _isLoadingStats = true;
+
+  UserModel get user => widget.user;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDashboardStats();
+  }
+
+  Future<void> _loadDashboardStats() async {
+    try {
+      final data = await _dashboardService.getLecturerStats();
+      if (mounted) {
+        setState(() {
+          _stats = data;
+          _isLoadingStats = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _isLoadingStats = false;
+        });
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Chiều cao tối thiểu để khung trắng kéo dài xuống sát thanh bottom navigation bar
         final minCardHeight = (constraints.maxHeight - 200).clamp(360.0, 3000.0);
 
         return SingleChildScrollView(
@@ -45,58 +82,65 @@ class LecturerHomeView extends StatelessWidget {
                       end: Alignment.bottomRight,
                     ),
                     borderRadius: BorderRadius.circular(26),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF007AFF).withValues(alpha: 0.35),
-                        blurRadius: 20,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
                     border: Border.all(
                       color: Colors.white.withValues(alpha: 0.35),
                       width: 1.2,
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF007AFF).withValues(alpha: 0.32),
+                        blurRadius: 18,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
                   ),
                   child: Row(
                     children: [
-                      // Avatar tròn viền trắng
+                      // Avatar Giảng viên
                       Container(
-                        width: 48,
-                        height: 48,
+                        width: 44,
+                        height: 44,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           border: Border.all(color: Colors.white, width: 2),
-                          color: Colors.white.withValues(alpha: 0.25),
+                          color: Colors.white.withValues(alpha: 0.2),
                           image: user.avatarUrl != null && user.avatarUrl!.isNotEmpty
-                              ? DecorationImage(image: NetworkImage(user.avatarUrl!), fit: BoxFit.cover)
+                              ? DecorationImage(
+                                  image: NetworkImage(user.avatarUrl!),
+                                  fit: BoxFit.cover,
+                                )
                               : null,
                         ),
                         child: user.avatarUrl == null || user.avatarUrl!.isEmpty
-                            ? const Icon(Icons.school_rounded, color: Colors.white, size: 28)
+                            ? const Icon(Icons.person, color: Colors.white, size: 26)
                             : null,
                       ),
-                      const SizedBox(width: 14),
+                      const SizedBox(width: 12),
 
-                      // Tên và Mã GV
+                      // Thông tin Họ tên & Chức danh
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               user.fullName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
                                 color: Colors.white,
-                                fontSize: 17.5,
+                                fontSize: 16,
                                 fontWeight: FontWeight.w800,
-                                letterSpacing: 0.2,
+                                letterSpacing: 0.1,
                               ),
                             ),
-                            const SizedBox(height: 3),
+                            const SizedBox(height: 2),
                             Text(
-                              'Mã GV: ${user.identifierCode} • Giảng viên hướng dẫn',
+                              'Giảng viên hướng dẫn • Khoa CNTT',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.88),
-                                fontSize: 13,
+                                color: Colors.white.withValues(alpha: 0.9),
+                                fontSize: 12,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -104,25 +148,100 @@ class LecturerHomeView extends StatelessWidget {
                         ),
                       ),
 
-                      // Quả chuông thông báo realtime
-                      const NotificationBellButton(
-                        iconColor: Colors.white,
-                        backgroundColor: Color(0x38FFFFFF),
-                        size: 22,
-                      ),
+                      // Chuông thông báo
+                      const NotificationBellButton(),
                     ],
                   ),
                 ),
               ),
 
-              const SizedBox(height: 14),
+              const SizedBox(height: 16),
 
-              // 2. KHỐI CARD CHỨC NĂNG CHÍNH KÉO DÀI XUỐNG SÁT BOTTOM BAR
+              // 2. BIỂU ĐỒ TRÒN THỐNG KÊ ĐỀ TÀI & HƯỚNG DẪN CỦA GIẢNG VIÊN (CHUẨN THIẾT KẾ DONUT)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: _isLoadingStats
+                    ? Container(
+                        height: 180,
+                        decoration: BoxDecoration(
+                          color: colors.cardBg,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: colors.cardBorder),
+                        ),
+                        child: const Center(
+                          child: CircularProgressIndicator(color: Color(0xFF0072E8), strokeWidth: 2.5),
+                        ),
+                      )
+                    : DonutStatCard(
+                        title: 'Trạng thái Đề xuất Đề tài',
+                        filterPillText: _stats.periodName,
+                        topSummaryWidget: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: colors.isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: colors.subCardBorder),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.school_rounded, size: 20, color: Color(0xFF0072E8)),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: RichText(
+                                  text: TextSpan(
+                                    style: TextStyle(fontSize: 13, color: colors.textSecondary),
+                                    children: [
+                                      const TextSpan(text: 'Đang hướng dẫn: '),
+                                      TextSpan(
+                                        text: '${_stats.supervisedThesesCount} đề tài',
+                                        style: const TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF0072E8)),
+                                      ),
+                                      TextSpan(
+                                        text: ' (${_stats.supervisedGroupsCount} nhóm) • ',
+                                      ),
+                                      const TextSpan(text: 'Tổng đề xuất: '),
+                                      TextSpan(
+                                        text: '${_stats.totalProposed}',
+                                        style: TextStyle(fontWeight: FontWeight.w800, color: colors.textPrimary),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        items: [
+                          DonutStatItem(
+                            value: _stats.approvedCount,
+                            label: 'Được duyệt',
+                            progressPercent: _stats.totalProposed > 0 ? _stats.approvedCount / _stats.totalProposed : 0.0,
+                            color: const Color(0xFF16A34A),
+                          ),
+                          DonutStatItem(
+                            value: _stats.needsRevisionCount,
+                            label: 'Cần chỉnh sửa',
+                            progressPercent: _stats.totalProposed > 0 ? _stats.needsRevisionCount / _stats.totalProposed : 0.0,
+                            color: const Color(0xFFD97706),
+                          ),
+                          DonutStatItem(
+                            value: _stats.rejectedCount,
+                            label: 'Không duyệt',
+                            progressPercent: _stats.totalProposed > 0 ? _stats.rejectedCount / _stats.totalProposed : 0.0,
+                            color: const Color(0xFFEF4444),
+                          ),
+                        ],
+                      ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // 3. KHỐI CARD CHỨC NĂNG CHÍNH CỦA GIẢNG VIÊN
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Container(
                   constraints: BoxConstraints(minHeight: minCardHeight),
-                  padding: const EdgeInsets.fromLTRB(16, 18, 16, 20),
+                  padding: const EdgeInsets.fromLTRB(18, 20, 18, 28),
                   decoration: BoxDecoration(
                     color: colors.cardBg,
                     borderRadius: BorderRadius.circular(24),
@@ -234,18 +353,19 @@ class LecturerHomeView extends StatelessWidget {
                             ),
                           ),
 
-                          // 3. Chấm điểm CĐR (Royal Purple / Violet)
+                          // 3. Chấm điểm phân công (Royal Purple / Violet)
                           Expanded(
                             child: _buildSquircleActionItem(
                               context: context,
                               icon: Icons.fact_check_rounded,
-                              title: 'Chấm điểm CĐR',
+                              title: 'Nhập điểm phân công',
                               color: const Color(0xFF7C3AED),
                               onTap: () {
-                                AppToast.showInfo(
+                                Navigator.push(
                                   context,
-                                  'Hiện tại chức năng này đang được triển khai.',
-                                  title: 'Chấm điểm CĐR',
+                                  MaterialPageRoute(
+                                    builder: (_) => LecturerScoringListScreen(user: user),
+                                  ),
                                 );
                               },
                             ),
@@ -255,17 +375,13 @@ class LecturerHomeView extends StatelessWidget {
 
                       const SizedBox(height: 20),
 
-                      // HÀNG 2 THẺ THỐNG KÊ NHANH CỦA GIẢNG VIÊN              ),
-
-                      const SizedBox(height: 18),
-
                       // HÀNG 2 THẺ THỐNG KÊ NHANH CỦA GIẢNG VIÊN
                       Row(
                         children: [
                           Expanded(
                             child: _buildStatCard(
                               context: context,
-                              value: '6',
+                              value: '${_stats.supervisedThesesCount}',
                               label: 'Đề tài hướng dẫn',
                               icon: Icons.menu_book_rounded,
                               color: const Color(0xFF0284C7),
@@ -283,8 +399,8 @@ class LecturerHomeView extends StatelessWidget {
                           Expanded(
                             child: _buildStatCard(
                               context: context,
-                              value: '4',
-                              label: 'Báo cáo chờ duyệt',
+                              value: '${_stats.approvedCount}',
+                              label: 'Đã hoàn thành duyệt',
                               icon: Icons.pending_actions_rounded,
                               color: const Color(0xFFF59E0B),
                               onTap: () {

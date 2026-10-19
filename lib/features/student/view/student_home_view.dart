@@ -2,14 +2,17 @@ import 'package:flutter/material.dart';
 import '../../../core/localization/app_language_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/storage_service.dart';
+import '../../../core/widgets/donut_stat_card.dart';
 import '../../auth/model/user_model.dart';
+import '../../dashboard/logic/dashboard_service.dart';
+import '../../dashboard/model/dashboard_stats_models.dart';
+import '../../notification/logic/notification_service.dart';
+import '../../notification/view/notification_bell_button.dart';
 import '../group/logic/student_group_service.dart';
 import '../group/view/student_group_list_screen.dart';
 import '../group/view/student_manage_group_screen.dart';
 import '../model/registration_period_model.dart';
 import '../topic/view/student_topic_list_screen.dart';
-import '../../notification/logic/notification_service.dart';
-import '../../notification/view/notification_bell_button.dart';
 import 'widgets/period_selection_dialog.dart';
 
 class StudentHomeView extends StatefulWidget {
@@ -23,6 +26,10 @@ class StudentHomeView extends StatefulWidget {
 }
 
 class _StudentHomeViewState extends State<StudentHomeView> {
+  final DashboardService _dashboardService = DashboardService();
+  StudentDashboardStats _stats = StudentDashboardStats();
+  bool _isLoadingStats = true;
+
   bool _hasShownImportantPopupInSession = false;
   List<RegistrationPeriodModel> _studentPeriods = [];
   RegistrationPeriodModel? _currentSelectedPeriod;
@@ -36,6 +43,25 @@ class _StudentHomeViewState extends State<StudentHomeView> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkStudentPeriods();
     });
+    _loadStats();
+  }
+
+  Future<void> _loadStats() async {
+    try {
+      final data = await _dashboardService.getStudentStats();
+      if (mounted) {
+        setState(() {
+          _stats = data;
+          _isLoadingStats = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _isLoadingStats = false;
+        });
+      }
+    }
   }
 
   @override
@@ -136,9 +162,96 @@ class _StudentHomeViewState extends State<StudentHomeView> {
                 ),
               ),
 
-              const SizedBox(height: 12),
+              const SizedBox(height: 14),
 
-              // 2. KHỐI CARD CHỨC NĂNG CHÍNH KÉO DÀI XUỐNG SÁT BOTTOM BAR
+              // 2. BIỂU ĐỒ 3 VÒNG TRÒN DONUT THỐNG KÊ TIẾN ĐỘ BÁO CÁO SINH VIÊN (CHUẨN THIẾT KẾ DONUT)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: _isLoadingStats
+                    ? Container(
+                        height: 180,
+                        decoration: BoxDecoration(
+                          color: colors.cardBg,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: colors.cardBorder),
+                        ),
+                        child: const Center(
+                          child: CircularProgressIndicator(color: Color(0xFF0072E8), strokeWidth: 2.5),
+                        ),
+                      )
+                    : DonutStatCard(
+                        title: 'Tiến độ Báo cáo & Nhiệm vụ',
+                        filterPillText: _stats.periodName,
+                        topSummaryWidget: _stats.hasUpcomingDeadline
+                            ? Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: colors.isDark ? const Color(0xFF1E293B) : const Color(0xFFEFF6FF),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: colors.isDark ? const Color(0xFF334155) : const Color(0xFFBFDBFE),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.timer_outlined, size: 18, color: Color(0xFF0284C7)),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            _stats.upcomingDeadlineTitle ?? 'Báo cáo tuần',
+                                            style: TextStyle(
+                                              fontSize: 12.5,
+                                              fontWeight: FontWeight.w700,
+                                              color: colors.isDark ? Colors.white : const Color(0xFF0F172A),
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            'Hạn nộp: ${_stats.upcomingDeadlineTime != null ? "${_stats.upcomingDeadlineTime!.day.toString().padLeft(2, '0')}/${_stats.upcomingDeadlineTime!.month.toString().padLeft(2, '0')} 23:59" : "23:59"} • ${_stats.upcomingRemainingText ?? ""}',
+                                            style: const TextStyle(
+                                              fontSize: 11.5,
+                                              fontWeight: FontWeight.w600,
+                                              color: Color(0xFF0284C7),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : null,
+                        items: [
+                          DonutStatItem(
+                            value: _stats.submittedWeeks,
+                            label: 'Tuần đã nộp',
+                            progressPercent: _stats.totalWeeks > 0 ? _stats.submittedWeeks / _stats.totalWeeks : 0.0,
+                            color: const Color(0xFF10B981),
+                          ),
+                          DonutStatItem(
+                            value: _stats.unsubmittedWeeks,
+                            label: 'Chưa nộp',
+                            progressPercent: _stats.totalWeeks > 0 ? _stats.unsubmittedWeeks / _stats.totalWeeks : 0.0,
+                            color: const Color(0xFFEA580C),
+                          ),
+                          DonutStatItem(
+                            value: _stats.assignedTasksCount,
+                            label: 'Bài GV đã giao',
+                            progressPercent: _stats.totalWeeks > 0 ? 1.0 : 0.0,
+                            color: const Color(0xFF0072E8),
+                          ),
+                        ],
+                      ),
+              ),
+
+              const SizedBox(height: 14),
+
+              // 3. KHỐI CARD CHỨC NĂNG CHÍNH KÉO DÀI XUỐNG SÁT BOTTOM BAR
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Container(
@@ -169,7 +282,7 @@ class _StudentHomeViewState extends State<StudentHomeView> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Tiêu đề khối
+                      // Tiêu đề khối & Nút chọn đợt
                       Row(
                         children: [
                           Container(
@@ -723,5 +836,3 @@ class _StudentHomeViewState extends State<StudentHomeView> {
     );
   }
 }
-
-

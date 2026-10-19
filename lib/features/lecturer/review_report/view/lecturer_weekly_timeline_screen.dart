@@ -168,11 +168,13 @@ class _LecturerWeeklyTimelineScreenState extends State<LecturerWeeklyTimelineScr
               onPressed: () => Navigator.pop(context),
               tooltip: 'Quay lại',
             ),
-            const Expanded(
+            Expanded(
               child: Text(
-                'LỘ TRÌNH TIẾN ĐỘ',
+                _allWeeks.isNotEmpty
+                    ? 'LỘ TRÌNH TIẾN ĐỘ ${_allWeeks.length} TUẦN'
+                    : 'LỘ TRÌNH TIẾN ĐỘ TUẦN',
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 14.5,
                   fontWeight: FontWeight.w800,
@@ -314,7 +316,7 @@ class _LecturerWeeklyTimelineScreenState extends State<LecturerWeeklyTimelineScr
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      '$_approvedCount/12 đạt',
+                      '$_approvedCount/${_allWeeks.isNotEmpty ? _allWeeks.length : 0} tuần đạt',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 10.5,
@@ -384,6 +386,7 @@ class _LecturerWeeklyTimelineScreenState extends State<LecturerWeeklyTimelineScr
                 ],
               ),
             ),
+
           ],
         ),
       ),

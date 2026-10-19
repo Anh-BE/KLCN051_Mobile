@@ -69,4 +69,9 @@ class ApiEndpoints {
   static const String submitProgressReport = '/ProgressReport/submit';
   static String unsubmitProgressReport(int reportId) => '/ProgressReport/unsubmit/$reportId';
   static const String uploadReportFile = '/ProgressReport/upload';
+
+  // --- Nhập điểm phân công (Scoring) ---
+  static const String scoringTheses = '/NhapDiem/Theses';
+  static const String scoringObjectives = '/NhapDiem/Objectives';
+  static const String saveScore = '/NhapDiem/Save';
 }
