@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/huit_loading.dart';
 import '../../../auth/model/user_model.dart';
 import '../logic/lecturer_topic_service.dart';
@@ -30,25 +31,31 @@ class _LecturerTopicListScreenState extends State<LecturerTopicListScreen> {
     _loadInitialData();
   }
 
-  /// Khởi tạo dữ liệu từ CSDL thật: Mặc định chọn ngay ĐỢT MỚI NHẤT
+  /// Khởi tạo dữ liệu từ CSDL thật: Tải dữ liệu ngay lập tức, tự động chọn đợt có đề tài hoặc "Tất cả đợt"
   Future<void> _loadInitialData() async {
     setState(() => _isLoading = true);
     final periods = await _service.getPeriods();
 
-    // Mặc định chọn ĐỢT MỚI NHẤT (index 0 vì đã sắp xếp giảm dần theo PeriodId)
-    if (periods.isNotEmpty && _selectedPeriodId == null) {
-      _selectedPeriodId = periods.first['periodId'] as int?;
-    }
-
+    // Tải toàn bộ đề tài của giảng viên trước (periodId = null) để luôn có dữ liệu hiển thị từ CSDL
     final data = await _service.getTheses(
-      periodId: _selectedPeriodId,
+      periodId: null,
       statusFilter: 'all',
       searchQuery: null,
     );
 
+    // Nếu đợt mới nhất có đề tài thì chọn đợt mới nhất; nếu đợt mới nhất chưa có đề tài thì mặc định "Tất cả đợt" (null) để người dùng thấy ngay danh sách đề tài
+    int? initialPeriodId;
+    if (periods.isNotEmpty) {
+      final latestId = periods.first['periodId'] as int?;
+      if (latestId != null && data.any((t) => t.periodId == latestId)) {
+        initialPeriodId = latestId;
+      }
+    }
+
     if (mounted) {
       setState(() {
         _periods = periods;
+        _selectedPeriodId = initialPeriodId;
         _allTheses = data;
         _applyFilterInternal();
         _isLoading = false;
@@ -72,6 +79,11 @@ class _LecturerTopicListScreenState extends State<LecturerTopicListScreen> {
 
   void _applyFilterInternal() {
     List<LecturerThesisModel> filtered = List.from(_allTheses);
+
+    // Lọc theo đợt nếu người dùng đang chọn 1 đợt cụ thể
+    if (_selectedPeriodId != null) {
+      filtered = filtered.where((t) => t.periodId == _selectedPeriodId).toList();
+    }
 
     // Lọc theo status tab
     if (_selectedStatus != 'all') {
@@ -100,48 +112,79 @@ class _LecturerTopicListScreenState extends State<LecturerTopicListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return Scaffold(
-      backgroundColor: const Color(0xFFF1F5F9),
-      body: SafeArea(
-        child: Column(
-          children: [
-            // 1. FLOATING PILL HEADER
-            _buildFloatingHeader(),
-
-            // 2. THANH TÌM KIẾM & BỘ LỌC ĐỢT (Mặc định đợt mới nhất)
-            _buildSearchAndPeriodFilter(),
-
-            // 3. TAB TRẠNG THÁI (Tất cả, Đã duyệt, Chờ duyệt, Từ chối)
-            _buildStatusTabs(),
-
-            const SizedBox(height: 8),
-
-            // 4. DANH SÁCH ĐỀ TÀI & TRẠNG THÁI (Chỉ chứa đề tài, không hiển thị nhóm)
-            Expanded(
-              child: _isLoading
-                  ? const Center(child: HuitLoading(size: 48, message: 'Đang tải danh sách đề tài...'))
-                  : _theses.isEmpty
-                      ? _buildEmptyState()
-                      : RefreshIndicator(
-                          onRefresh: _refreshList,
-                          color: const Color(0xFF0F766E),
-                          child: ListView.separated(
-                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                            itemCount: _theses.length,
-                            separatorBuilder: (context, index) => const SizedBox(height: 14),
-                            itemBuilder: (context, index) {
-                              return _buildThesisCard(_theses[index]);
-                            },
-                          ),
+      extendBody: true,
+      backgroundColor: Colors.transparent,
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Nền chung (Ảnh nền ban ngày / Gradient tối cho Dark Mode đồng bộ Trang chủ)
+          Positioned.fill(
+            child: colors.isDark
+                ? Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: colors.pageGradient,
+                      ),
+                    ),
+                  )
+                : Image.asset(
+                    'assets/images/bg_main.png',
+                    fit: BoxFit.cover,
+                    alignment: Alignment.topCenter,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: colors.pageGradient,
                         ),
+                      ),
+                    ),
+                  ),
+          ),
+          SafeArea(
+            child: Column(
+              children: [
+                // 1. FLOATING PILL HEADER
+                _buildFloatingHeader(),
+
+                // 2. FORM BỘ LỌC CHUẨN UI/UX (TÌM KIẾM, ĐỢT & TRẠNG THÁI)
+                _buildFilterForm(colors),
+
+                const SizedBox(height: 4),
+
+                // 3. DANH SÁCH ĐỀ TÀI & TRẠNG THÁI (Chỉ chứa đề tài, không hiển thị nhóm)
+                Expanded(
+                  child: _isLoading
+                      ? const Center(child: HuitLoading(size: 48, message: 'Đang tải danh sách đề tài...'))
+                      : _theses.isEmpty
+                          ? _buildEmptyState(colors)
+                          : RefreshIndicator(
+                              onRefresh: _refreshList,
+                              color: const Color(0xFF0072E8),
+                              child: ListView.separated(
+                                padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                                itemCount: _theses.length,
+                                separatorBuilder: (context, index) => const SizedBox(height: 14),
+                                itemBuilder: (context, index) {
+                                  return _buildThesisCard(_theses[index], colors);
+                                },
+                              ),
+                            ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  // 1. Floating Pill Header
+  // 1. Floating Pill Header (Căn giữa tiêu đề, đã xóa icon load theo yêu cầu)
   Widget _buildFloatingHeader() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
@@ -150,15 +193,19 @@ class _LecturerTopicListScreenState extends State<LecturerTopicListScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 10),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
-            colors: [Color(0xFF0F766E), Color(0xFF0D9488)],
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
+            colors: [Color(0xFF0072E8), Color(0xFF0091FF), Color(0xFF00A2FF)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
-          borderRadius: BorderRadius.circular(30),
+          borderRadius: BorderRadius.circular(26),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.35),
+            width: 1.2,
+          ),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF0D9488).withValues(alpha: 0.3),
-              blurRadius: 12,
+              color: const Color(0xFF007AFF).withValues(alpha: 0.32),
+              blurRadius: 16,
               offset: const Offset(0, 4),
             ),
           ],
@@ -176,125 +223,309 @@ class _LecturerTopicListScreenState extends State<LecturerTopicListScreen> {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 15,
+                  fontSize: 14.5,
                   fontWeight: FontWeight.w800,
                   letterSpacing: 0.4,
                 ),
               ),
             ),
-            IconButton(
-              icon: const Icon(Icons.refresh_rounded, color: Colors.white, size: 22),
-              onPressed: () {
-                _loadInitialData();
-              },
-              tooltip: 'Làm mới',
-            ),
+            // Cân đối với nút back bên trái để tiêu đề nằm chính giữa (đã xóa icon load theo yêu cầu)
+            const SizedBox(width: 48),
           ],
         ),
       ),
     );
   }
 
-  // 2. Ô tìm kiếm và chọn đợt khóa luận (mặc định đợt mới nhất, có thể chọn bất kỳ lúc nào)
-  Widget _buildSearchAndPeriodFilter() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      child: Row(
-        children: [
-          // Ô tìm kiếm
-          Expanded(
-            child: Container(
-              height: 46,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.03),
-                    blurRadius: 10,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: TextField(
-                controller: _searchController,
-                onChanged: (_) => _applyFilter(),
-                decoration: InputDecoration(
-                  hintText: 'Tìm theo tên, mã đề tài...',
-                  hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
-                  prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF0D9488), size: 20),
-                  suffixIcon: _searchController.text.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear_rounded, size: 18, color: Colors.grey),
-                          onPressed: () {
-                            _searchController.clear();
-                            _applyFilter();
-                          },
-                        )
-                      : null,
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
+  // 2. Form bộ lọc chuẩn UI/UX: Ô tìm kiếm 100% full width + 2 Dropdown lọc (Đợt & Trạng thái) cân đối
+  Widget _buildFilterForm(AppColors colors) {
+    final list = _allTheses;
+    final approvedCount = list.where((t) => _isStatusMatch(t.status, 'Approved')).length;
+    final pendingCount = list.where((t) => _isStatusMatch(t.status, 'Pending')).length;
+    final rejectedCount = list.where((t) => _isStatusMatch(t.status, 'Rejected')).length;
+    final isFiltered = _searchController.text.trim().isNotEmpty ||
+        _selectedPeriodId != null ||
+        _selectedStatus != 'all';
 
-          // Dropdown phân loại đợt (có thể ấn chọn bất cứ lúc nào)
-          Container(
-            height: 46,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 1. Ô tìm kiếm toàn diện 100% bề ngang (không bị Dropdown chèn ép)
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          child: Container(
+            height: 44,
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: const Color(0xFF0D9488).withValues(alpha: 0.3)),
+              color: colors.cardBg,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: colors.cardBorder),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.03),
-                  blurRadius: 10,
+                  color: Colors.black.withValues(alpha: colors.isDark ? 0.2 : 0.03),
+                  blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
               ],
             ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<int?>(
-                value: _selectedPeriodId,
-                icon: const Icon(Icons.arrow_drop_down_rounded, color: Color(0xFF0D9488)),
-                style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF1E293B)),
-                onChanged: (val) {
-                  setState(() {
-                    _selectedPeriodId = val;
-                    _selectedStatus = 'all';
-                  });
-                  _refreshList();
-                },
-                items: [
-                  const DropdownMenuItem<int?>(
-                    value: null,
-                    child: Text('Tất cả đợt'),
-                  ),
-                  if (_periods.isNotEmpty)
-                    ..._periods
-                        .where((p) => p['periodId'] != null)
-                        .map((p) {
-                      final rawName = (p['periodName'] ?? 'Đợt khóa luận').toString();
-                      final shortName = rawName
-                          .replaceAll('Khóa luận tốt nghiệp ', 'KLTN ')
-                          .replaceAll('Khóa luận ', 'KL ');
-                      return DropdownMenuItem<int?>(
-                        value: p['periodId'] as int,
-                        child: Text(
-                          shortName,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      );
-                    }),
-                ],
+            child: TextField(
+              controller: _searchController,
+              onChanged: (_) => _applyFilter(),
+              style: TextStyle(fontSize: 13.5, color: colors.textPrimary),
+              decoration: InputDecoration(
+                hintText: 'Tìm theo tên hoặc mã đề tài...',
+                hintStyle: TextStyle(fontSize: 13, color: colors.textMuted),
+                prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF0072E8), size: 20),
+                suffixIcon: _searchController.text.isNotEmpty
+                    ? IconButton(
+                        icon: Icon(Icons.close_rounded, size: 18, color: colors.textSecondary),
+                        onPressed: () {
+                          _searchController.clear();
+                          _applyFilter();
+                        },
+                      )
+                    : null,
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(vertical: 11),
               ),
             ),
           ),
-        ],
-      ),
+        ),
+
+        const SizedBox(height: 6),
+
+        // 2. Hai ô Form lọc chuẩn: Đợt khóa luận & Trạng thái đề tài
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            children: [
+              // Dropdown 1: Đợt khóa luận
+              Expanded(
+                child: Container(
+                  height: 42,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: colors.cardBg,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: _selectedPeriodId != null
+                          ? const Color(0xFF0072E8)
+                          : colors.cardBorder,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: colors.isDark ? 0.2 : 0.03),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<int?>(
+                      value: _selectedPeriodId,
+                      isExpanded: true,
+                      dropdownColor: colors.cardBg,
+                      icon: Icon(Icons.keyboard_arrow_down_rounded, size: 20, color: colors.textSecondary),
+                      style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500, color: colors.textPrimary),
+                      onChanged: (val) {
+                        setState(() {
+                          _selectedPeriodId = val;
+                          _selectedStatus = 'all';
+                        });
+                        _refreshList();
+                      },
+                      items: [
+                        DropdownMenuItem<int?>(
+                          value: null,
+                          child: Row(
+                            children: [
+                              const Icon(Icons.event_note_rounded, size: 16, color: Color(0xFF0072E8)),
+                              const SizedBox(width: 6),
+                              const Flexible(
+                                child: Text('Tất cả đợt', maxLines: 1, overflow: TextOverflow.ellipsis),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (_periods.isNotEmpty)
+                          ..._periods.where((p) => p['periodId'] != null).map((p) {
+                            final rawName = (p['periodName'] ?? 'Đợt khóa luận').toString();
+                            final shortName = rawName
+                                .replaceAll('Khóa luận tốt nghiệp ', 'KLTN ')
+                                .replaceAll('Khóa luận ', 'KL ');
+                            return DropdownMenuItem<int?>(
+                              value: p['periodId'] as int,
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.event_note_rounded, size: 16, color: Color(0xFF0072E8)),
+                                  const SizedBox(width: 6),
+                                  Flexible(
+                                    child: Text(shortName, maxLines: 1, overflow: TextOverflow.ellipsis),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(width: 10),
+
+              // Dropdown 2: Trạng thái đề tài
+              Expanded(
+                child: Container(
+                  height: 42,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: colors.cardBg,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: _selectedStatus != 'all'
+                          ? const Color(0xFF0072E8)
+                          : colors.cardBorder,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: colors.isDark ? 0.2 : 0.03),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _selectedStatus,
+                      isExpanded: true,
+                      dropdownColor: colors.cardBg,
+                      icon: Icon(Icons.keyboard_arrow_down_rounded, size: 20, color: colors.textSecondary),
+                      style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500, color: colors.textPrimary),
+                      onChanged: (val) {
+                        if (val != null) {
+                          setState(() => _selectedStatus = val);
+                          _applyFilter();
+                        }
+                      },
+                      items: [
+                        DropdownMenuItem(
+                          value: 'all',
+                          child: Text('Tất cả (${list.length})', maxLines: 1, overflow: TextOverflow.ellipsis),
+                        ),
+                        DropdownMenuItem(
+                          value: 'Approved',
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 8,
+                                height: 8,
+                                margin: const EdgeInsets.only(right: 6),
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFF10B981),
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              Flexible(
+                                child: Text('Đã duyệt ($approvedCount)', maxLines: 1, overflow: TextOverflow.ellipsis),
+                              ),
+                            ],
+                          ),
+                        ),
+                        DropdownMenuItem(
+                          value: 'Pending',
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 8,
+                                height: 8,
+                                margin: const EdgeInsets.only(right: 6),
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFFF59E0B),
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              Flexible(
+                                child: Text('Chờ duyệt ($pendingCount)', maxLines: 1, overflow: TextOverflow.ellipsis),
+                              ),
+                            ],
+                          ),
+                        ),
+                        DropdownMenuItem(
+                          value: 'Rejected',
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 8,
+                                height: 8,
+                                margin: const EdgeInsets.only(right: 6),
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFFEF4444),
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              Flexible(
+                                child: Text('Từ chối ($rejectedCount)', maxLines: 1, overflow: TextOverflow.ellipsis),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // 3. Dòng thống kê số lượng đề tài & Nút đặt lại bộ lọc
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 6, 16, 2),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '${_theses.length} đề tài',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: colors.textSecondary,
+                ),
+              ),
+              if (isFiltered)
+                InkWell(
+                  onTap: () {
+                    _searchController.clear();
+                    setState(() {
+                      _selectedPeriodId = null;
+                      _selectedStatus = 'all';
+                    });
+                    _refreshList();
+                  },
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.restart_alt_rounded, size: 16, color: Color(0xFF0072E8)),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Đặt lại',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF0072E8),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -333,97 +564,20 @@ class _LecturerTopicListScreenState extends State<LecturerTopicListScreen> {
     return true;
   }
 
-  // 3. Tab trạng thái: Tất cả, Đã duyệt, Chờ duyệt, Từ chối
-  Widget _buildStatusTabs() {
-    final list = _allTheses;
-    final approvedCount = list.where((t) => _isStatusMatch(t.status, 'Approved')).length;
-    final pendingCount = list.where((t) => _isStatusMatch(t.status, 'Pending')).length;
-    final rejectedCount = list.where((t) => _isStatusMatch(t.status, 'Rejected')).length;
-
-    final statusList = [
-      {'key': 'all', 'label': 'Tất cả (${list.length})'},
-      {'key': 'Approved', 'label': 'Đã duyệt ($approvedCount)', 'icon': Icons.check_circle_rounded, 'color': const Color(0xFF10B981)},
-      {'key': 'Pending', 'label': 'Chờ duyệt ($pendingCount)', 'icon': Icons.schedule_rounded, 'color': const Color(0xFFF59E0B)},
-      {'key': 'Rejected', 'label': 'Từ chối ($rejectedCount)', 'icon': Icons.cancel_rounded, 'color': const Color(0xFFEF4444)},
-    ];
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      physics: const BouncingScrollPhysics(),
-      child: Row(
-        children: statusList.map((item) {
-          final isSelected = _selectedStatus == item['key'];
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: InkWell(
-              onTap: () {
-                setState(() => _selectedStatus = item['key'] as String);
-                _applyFilter();
-              },
-              borderRadius: BorderRadius.circular(20),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  color: isSelected ? const Color(0xFF0F766E) : Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: isSelected ? const Color(0xFF0F766E) : const Color(0xFFE2E8F0),
-                    width: 1,
-                  ),
-                  boxShadow: isSelected
-                      ? [
-                          BoxShadow(
-                            color: const Color(0xFF0F766E).withValues(alpha: 0.25),
-                            blurRadius: 8,
-                            offset: const Offset(0, 3),
-                          )
-                        ]
-                      : [],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (item['icon'] != null) ...[
-                      Icon(
-                        item['icon'] as IconData,
-                        size: 15,
-                        color: isSelected ? Colors.white : (item['color'] as Color),
-                      ),
-                      const SizedBox(width: 5),
-                    ],
-                    Text(
-                      item['label'] as String,
-                      style: TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                        color: isSelected ? Colors.white : const Color(0xFF475569),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-
-  // 4. Thẻ Đề tài chi tiết: CHỈ CHỨA ĐỀ TÀI, BỎ MỤC NHÓM ĐĂNG KÝ
-  Widget _buildThesisCard(LecturerThesisModel thesis) {
+  // 3. Thẻ Đề tài chi tiết: CHỈ CHỨA ĐỀ TÀI, BỎ MỤC NHÓM ĐĂNG KÝ
+  Widget _buildThesisCard(LecturerThesisModel thesis, AppColors colors) {
     final (statusBg, statusTextColor, statusText, statusIcon) = _getThesisStatusMeta(thesis.status);
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        color: colors.cardBg,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colors.cardBorder),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
+            color: Colors.black.withValues(alpha: colors.isDark ? 0.25 : 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
@@ -433,23 +587,24 @@ class _LecturerTopicListScreenState extends State<LecturerTopicListScreen> {
           // Header của Card: Mã đề tài + Tên đợt + Badge trạng thái
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: const BoxDecoration(
-              border: Border(bottom: BorderSide(color: Color(0xFFF1F5F9), width: 1.2)),
+            decoration: BoxDecoration(
+              border: Border(bottom: BorderSide(color: colors.divider, width: 1.2)),
             ),
             child: Row(
               children: [
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF1F5F9),
+                    color: const Color(0xFFEFF6FF),
                     borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFFBFDBFE)),
                   ),
                   child: Text(
                     thesis.periodCode.isNotEmpty ? thesis.periodCode : 'DT${thesis.thesisId}',
                     style: const TextStyle(
                       fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF0F766E),
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF0072E8),
                     ),
                   ),
                 ),
@@ -497,10 +652,10 @@ class _LecturerTopicListScreenState extends State<LecturerTopicListScreen> {
                 // Tên đề tài
                 Text(
                   thesis.thesisTitle,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 15.5,
                     fontWeight: FontWeight.w800,
-                    color: Color(0xFF1E293B),
+                    color: colors.textPrimary,
                     height: 1.35,
                   ),
                 ),
@@ -515,7 +670,7 @@ class _LecturerTopicListScreenState extends State<LecturerTopicListScreen> {
                       label: thesis.thesisType,
                       icon: Icons.lightbulb_outline_rounded,
                       bgColor: const Color(0xFFEFF6FF),
-                      textColor: const Color(0xFF1D4ED8),
+                      textColor: const Color(0xFF0072E8),
                     ),
                     if (thesis.outlineObjectives.isNotEmpty)
                       _buildPillTag(
@@ -538,13 +693,14 @@ class _LecturerTopicListScreenState extends State<LecturerTopicListScreen> {
                     icon: const Icon(Icons.visibility_rounded, size: 18),
                     label: const Text(
                       'Xem chi tiết đề tài',
-                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
+                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5),
                     ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0F766E),
+                      backgroundColor: const Color(0xFF0072E8),
                       foregroundColor: Colors.white,
                       elevation: 0,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shadowColor: const Color(0xFF0072E8).withValues(alpha: 0.28),
                     ),
                   ),
                 ),
@@ -595,7 +751,7 @@ class _LecturerTopicListScreenState extends State<LecturerTopicListScreen> {
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(AppColors colors) {
     final hasPeriod = _selectedPeriodId != null;
     return Center(
       child: Padding(
@@ -606,11 +762,11 @@ class _LecturerTopicListScreenState extends State<LecturerTopicListScreen> {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: colors.cardBg,
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
+                    color: Colors.black.withValues(alpha: colors.isDark ? 0.2 : 0.04),
                     blurRadius: 20,
                   ),
                 ],
@@ -620,7 +776,7 @@ class _LecturerTopicListScreenState extends State<LecturerTopicListScreen> {
             const SizedBox(height: 16),
             Text(
               hasPeriod ? 'Đợt này chưa có đề tài' : 'Không tìm thấy đề tài nào',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: colors.textPrimary),
             ),
             const SizedBox(height: 6),
             Text(
@@ -628,7 +784,7 @@ class _LecturerTopicListScreenState extends State<LecturerTopicListScreen> {
                   ? 'Đợt bạn chọn hiện chưa có đề tài nào được phân công hoặc tạo mới. Bạn có thể chọn "Tất cả đợt" bằng bộ lọc ở trên.'
                   : 'Vui lòng thử thay đổi từ khóa tìm kiếm hoặc bộ lọc trạng thái.',
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 13, color: Color(0xFF64748B), height: 1.4),
+              style: TextStyle(fontSize: 13, color: colors.textSecondary, height: 1.4),
             ),
             if (hasPeriod) ...[
               const SizedBox(height: 16),
@@ -643,7 +799,7 @@ class _LecturerTopicListScreenState extends State<LecturerTopicListScreen> {
                 icon: const Icon(Icons.refresh_rounded, size: 16),
                 label: const Text('Xem tất cả các đợt'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF0F766E),
+                  backgroundColor: const Color(0xFF0072E8),
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
@@ -729,12 +885,13 @@ class _ThesisDetailBottomSheetState extends State<_ThesisDetailBottomSheet> with
   @override
   Widget build(BuildContext context) {
     final thesis = widget.thesis;
+    final colors = AppColors.of(context);
 
     return Container(
       height: MediaQuery.of(context).size.height * 0.88,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      decoration: BoxDecoration(
+        color: colors.cardBg,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
       ),
       child: Column(
         children: [
@@ -745,7 +902,7 @@ class _ThesisDetailBottomSheetState extends State<_ThesisDetailBottomSheet> with
               width: 44,
               height: 5,
               decoration: BoxDecoration(
-                color: const Color(0xFFCBD5E1),
+                color: colors.divider,
                 borderRadius: BorderRadius.circular(10),
               ),
             ),
@@ -762,20 +919,20 @@ class _ThesisDetailBottomSheetState extends State<_ThesisDetailBottomSheet> with
                     children: [
                       Text(
                         thesis.periodCode.isNotEmpty ? thesis.periodCode : 'DT${thesis.thesisId}',
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF0F766E)),
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF0072E8)),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         thesis.thesisTitle,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF1E293B)),
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: colors.textPrimary),
                       ),
                     ],
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.close_rounded, color: Color(0xFF64748B)),
+                  icon: Icon(Icons.close_rounded, color: colors.textSecondary),
                   onPressed: () => Navigator.pop(context),
                 ),
               ],
@@ -784,16 +941,16 @@ class _ThesisDetailBottomSheetState extends State<_ThesisDetailBottomSheet> with
 
           // TabBar: ĐÚNG 3 MỤC THEO YÊU CẦU
           Container(
-            decoration: const BoxDecoration(
-              border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0), width: 1)),
+            decoration: BoxDecoration(
+              border: Border(bottom: BorderSide(color: colors.divider, width: 1)),
             ),
             child: TabBar(
               controller: _tabController,
-              labelColor: const Color(0xFF0F766E),
-              unselectedLabelColor: const Color(0xFF64748B),
-              indicatorColor: const Color(0xFF0F766E),
+              labelColor: const Color(0xFF0072E8),
+              unselectedLabelColor: colors.textSecondary,
+              indicatorColor: const Color(0xFF0072E8),
               indicatorWeight: 3,
-              labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+              labelStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
               tabs: [
                 const Tab(text: 'Thông tin đề tài'),
                 Tab(text: 'Bảng CLO (${thesis.outlineObjectives.length})'),
@@ -813,37 +970,37 @@ class _ThesisDetailBottomSheetState extends State<_ThesisDetailBottomSheet> with
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildSectionTitle('Định hướng nghiên cứu:'),
+                      _buildSectionTitle('Định hướng nghiên cứu:', colors),
                       const SizedBox(height: 4),
-                      Text(thesis.thesisType, style: const TextStyle(fontSize: 14, color: Color(0xFF334155), fontWeight: FontWeight.w600)),
+                      Text(thesis.thesisType, style: TextStyle(fontSize: 14, color: colors.textPrimary, fontWeight: FontWeight.w600)),
                       const SizedBox(height: 18),
 
-                      _buildSectionTitle('Đợt khóa luận:'),
+                      _buildSectionTitle('Đợt khóa luận:', colors),
                       const SizedBox(height: 4),
-                      Text(thesis.periodName, style: const TextStyle(fontSize: 14, color: Color(0xFF334155))),
+                      Text(thesis.periodName, style: TextStyle(fontSize: 14, color: colors.textSecondary)),
                       const SizedBox(height: 18),
 
-                      _buildSectionTitle('Giảng viên hướng dẫn:'),
+                      _buildSectionTitle('Giảng viên hướng dẫn:', colors),
                       const SizedBox(height: 4),
                       Text(
                         thesis.gvhd.isNotEmpty ? thesis.gvhd : 'Giảng viên đề xuất',
-                        style: const TextStyle(fontSize: 14, color: Color(0xFF334155), fontWeight: FontWeight.w600),
+                        style: TextStyle(fontSize: 14, color: colors.textPrimary, fontWeight: FontWeight.w600),
                       ),
                       const SizedBox(height: 18),
 
-                      _buildSectionTitle('Yêu cầu & Nội dung thuyết minh:'),
+                      _buildSectionTitle('Yêu cầu & Nội dung thuyết minh:', colors),
                       const SizedBox(height: 8),
                       Container(
                         width: double.infinity,
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF8FAFC),
+                          color: colors.subCardBg,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                          border: Border.all(color: colors.subCardBorder),
                         ),
                         child: Text(
                           thesis.requirements.isNotEmpty ? thesis.requirements : 'Chưa có yêu cầu chi tiết.',
-                          style: const TextStyle(fontSize: 13.5, height: 1.5, color: Color(0xFF334155)),
+                          style: TextStyle(fontSize: 13.5, height: 1.5, color: colors.textSecondary),
                         ),
                       ),
                     ],
@@ -852,8 +1009,8 @@ class _ThesisDetailBottomSheetState extends State<_ThesisDetailBottomSheet> with
 
                 // TAB 2: BẢNG CLO (CHUẨN ĐẦU RA)
                 thesis.outlineObjectives.isEmpty
-                    ? const Center(
-                        child: Text('Chưa có cấu hình đề cương CLO cho đề tài này', style: TextStyle(color: Color(0xFF64748B))),
+                    ? Center(
+                        child: Text('Chưa có cấu hình đề cương CLO cho đề tài này', style: TextStyle(color: colors.textSecondary)),
                       )
                     : ListView(
                         padding: const EdgeInsets.all(20),
@@ -862,18 +1019,18 @@ class _ThesisDetailBottomSheetState extends State<_ThesisDetailBottomSheet> with
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                             margin: const EdgeInsets.only(bottom: 14),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFF0FDF4),
+                              color: colors.isDark ? const Color(0xFF143022) : const Color(0xFFF0FDF4),
                               borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: const Color(0xFFBBF7D0)),
+                              border: Border.all(color: colors.isDark ? const Color(0xFF1B4D36) : const Color(0xFFBBF7D0)),
                             ),
-                            child: const Row(
+                            child: Row(
                               children: [
-                                Icon(Icons.touch_app_rounded, size: 16, color: Color(0xFF16A34A)),
-                                SizedBox(width: 8),
+                                const Icon(Icons.touch_app_rounded, size: 16, color: Color(0xFF16A34A)),
+                                const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
                                     'Chạm vào từng CLO để xem danh sách chuẩn đầu ra con (CLO con)',
-                                    style: TextStyle(fontSize: 12, color: Color(0xFF166534), fontWeight: FontWeight.w600),
+                                    style: TextStyle(fontSize: 12, color: colors.isDark ? const Color(0xFF4ADE80) : const Color(0xFF166534), fontWeight: FontWeight.w600),
                                   ),
                                 ),
                               ],
@@ -881,13 +1038,13 @@ class _ThesisDetailBottomSheetState extends State<_ThesisDetailBottomSheet> with
                           ),
                           ...thesis.outlineObjectives.map((clo) => Padding(
                                 padding: const EdgeInsets.only(bottom: 12),
-                                child: _buildCloCard(clo),
+                                child: _buildCloCard(clo, colors),
                               )),
                         ],
                       ),
 
                 // TAB 3: BẢNG BÁO CÁO TIẾN ĐỘ TUẦN (CHỈ HIỂN THỊ NỘI DUNG THÔNG TIN)
-                _buildWeeklyReportTableTab(),
+                _buildWeeklyReportTableTab(colors),
               ],
             ),
           ),
@@ -897,7 +1054,7 @@ class _ThesisDetailBottomSheetState extends State<_ThesisDetailBottomSheet> with
   }
 
   // TAB 3: BẢNG BÁO CÁO TIẾN ĐỘ TUẦN - CHỈ HIỂN THỊ NỘI DUNG THÔNG TIN KẾ HOẠCH
-  Widget _buildWeeklyReportTableTab() {
+  Widget _buildWeeklyReportTableTab(AppColors colors) {
     if (_isLoadingPlans) {
       return const Center(
         child: HuitLoading(size: 44, message: 'Đang tải bảng báo cáo tiến độ tuần...'),
@@ -913,22 +1070,22 @@ class _ThesisDetailBottomSheetState extends State<_ThesisDetailBottomSheet> with
             children: [
               Container(
                 padding: const EdgeInsets.all(18),
-                decoration: const BoxDecoration(
-                  color: Color(0xFFF1F5F9),
+                decoration: BoxDecoration(
+                  color: colors.subCardBg,
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(Icons.event_busy_rounded, color: Color(0xFF94A3B8), size: 44),
               ),
               const SizedBox(height: 14),
-              const Text(
+              Text(
                 'Chưa có kế hoạch nội dung tuần',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: colors.textPrimary),
               ),
               const SizedBox(height: 6),
-              const Text(
+              Text(
                 'Đề tài chưa được thiết lập danh mục nội dung các tuần trong hệ thống.',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 12.5, color: Color(0xFF64748B), height: 1.4),
+                style: TextStyle(fontSize: 12.5, color: colors.textSecondary, height: 1.4),
               ),
             ],
           ),
@@ -943,33 +1100,33 @@ class _ThesisDetailBottomSheetState extends State<_ThesisDetailBottomSheet> with
         Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: const Color(0xFFF8FAFC),
+            color: colors.subCardBg,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
+            border: Border.all(color: colors.subCardBorder),
           ),
           child: Row(
             children: [
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF0F766E).withValues(alpha: 0.1),
+                  color: const Color(0xFFEFF6FF),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.calendar_month_rounded, color: Color(0xFF0F766E), size: 22),
+                child: const Icon(Icons.calendar_month_rounded, color: Color(0xFF0072E8), size: 22),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'KẾ HOẠCH NỘI DUNG CÁC TUẦN',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF1E293B)),
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: colors.textPrimary),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       'Lộ trình ${_weeklyPlans.length} tuần do Giảng viên xây dựng cho đề tài',
-                      style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
+                      style: TextStyle(fontSize: 11.5, color: colors.textSecondary),
                     ),
                   ],
                 ),
@@ -979,7 +1136,7 @@ class _ThesisDetailBottomSheetState extends State<_ThesisDetailBottomSheet> with
         ),
 
         const SizedBox(height: 16),
-        _buildSectionTitle('NỘI DUNG CÔNG VIỆC THEO TUẦN:'),
+        _buildSectionTitle('NỘI DUNG CÔNG VIỆC THEO TUẦN:', colors),
         const SizedBox(height: 10),
 
         // Danh sách các tuần: CHỈ HIỂN THỊ NỘI DUNG THÔNG TIN
@@ -992,12 +1149,12 @@ class _ThesisDetailBottomSheetState extends State<_ThesisDetailBottomSheet> with
             margin: const EdgeInsets.only(bottom: 10),
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: colors.cardBg,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
+              border: Border.all(color: colors.subCardBorder),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.02),
+                  color: Colors.black.withValues(alpha: colors.isDark ? 0.2 : 0.02),
                   blurRadius: 6,
                   offset: const Offset(0, 2),
                 ),
@@ -1011,7 +1168,7 @@ class _ThesisDetailBottomSheetState extends State<_ThesisDetailBottomSheet> with
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF0F766E).withValues(alpha: 0.1),
+                        color: const Color(0xFFEFF6FF),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
@@ -1019,7 +1176,7 @@ class _ThesisDetailBottomSheetState extends State<_ThesisDetailBottomSheet> with
                         style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w800,
-                          color: Color(0xFF0F766E),
+                          color: Color(0xFF0072E8),
                         ),
                       ),
                     ),
@@ -1028,10 +1185,10 @@ class _ThesisDetailBottomSheetState extends State<_ThesisDetailBottomSheet> with
                 const SizedBox(height: 8),
                 Text(
                   title.isNotEmpty ? title : 'Nội dung thực hiện Tuần $weekNum',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13.5,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF1E293B),
+                    color: colors.textPrimary,
                     height: 1.35,
                   ),
                 ),
@@ -1041,13 +1198,13 @@ class _ThesisDetailBottomSheetState extends State<_ThesisDetailBottomSheet> with
                     width: double.infinity,
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF8FAFC),
+                      color: colors.subCardBg,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                      border: Border.all(color: colors.subCardBorder),
                     ),
                     child: Text(
                       reqs,
-                      style: const TextStyle(fontSize: 12, color: Color(0xFF475569), height: 1.4),
+                      style: TextStyle(fontSize: 12, color: colors.textSecondary, height: 1.4),
                     ),
                   ),
                 ],
@@ -1059,7 +1216,7 @@ class _ThesisDetailBottomSheetState extends State<_ThesisDetailBottomSheet> with
     );
   }
 
-  Widget _buildCloCard(OutlineObjectiveItem clo) {
+  Widget _buildCloCard(OutlineObjectiveItem clo, AppColors colors) {
     final key = _getCloKey(clo);
     final isExpanded = _expandedCloKeys.contains(key);
     final subList = _getSubObjectives(clo);
@@ -1071,15 +1228,15 @@ class _ThesisDetailBottomSheetState extends State<_ThesisDetailBottomSheet> with
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.cardBg,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: isExpanded ? const Color(0xFF2563EB).withValues(alpha: 0.35) : const Color(0xFFE2E8F0),
+          color: isExpanded ? const Color(0xFF2563EB).withValues(alpha: 0.35) : colors.subCardBorder,
           width: isExpanded ? 1.5 : 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: isExpanded ? const Color(0xFF2563EB).withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.02),
+            color: isExpanded ? const Color(0xFF2563EB).withValues(alpha: 0.05) : Colors.black.withValues(alpha: colors.isDark ? 0.2 : 0.02),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -1115,10 +1272,10 @@ class _ThesisDetailBottomSheetState extends State<_ThesisDetailBottomSheet> with
                   Expanded(
                     child: Text(
                       clo.outlineContent,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13.5,
                         fontWeight: FontWeight.w700,
-                        color: Color(0xFF1E293B),
+                        color: colors.textPrimary,
                         height: 1.3,
                       ),
                     ),
@@ -1145,7 +1302,7 @@ class _ThesisDetailBottomSheetState extends State<_ThesisDetailBottomSheet> with
                     const SizedBox(width: 6),
                     Icon(
                       isExpanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
-                      color: const Color(0xFF64748B),
+                      color: colors.textSecondary,
                       size: 20,
                     ),
                   ],
@@ -1156,28 +1313,28 @@ class _ThesisDetailBottomSheetState extends State<_ThesisDetailBottomSheet> with
 
           if (isExpanded && hasSub) ...[
             Container(
-              decoration: const BoxDecoration(
-                color: Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.vertical(bottom: Radius.circular(14)),
-                border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
+              decoration: BoxDecoration(
+                color: colors.subCardBg,
+                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(14)),
+                border: Border(top: BorderSide(color: colors.subCardBorder)),
               ),
               padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Padding(
-                    padding: EdgeInsets.only(bottom: 8),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
                     child: Text(
                       'Danh sách chuẩn đầu ra chi tiết (CLO con):',
                       style: TextStyle(
                         fontSize: 11.5,
                         fontWeight: FontWeight.w700,
-                        color: Color(0xFF64748B),
+                        color: colors.textSecondary,
                         letterSpacing: 0.2,
                       ),
                     ),
                   ),
-                  ...subList.map((sub) => _buildSubCloItem(sub)),
+                  ...subList.map((sub) => _buildSubCloItem(sub, colors)),
                 ],
               ),
             ),
@@ -1192,14 +1349,14 @@ class _ThesisDetailBottomSheetState extends State<_ThesisDetailBottomSheet> with
     return [];
   }
 
-  Widget _buildSubCloItem(OutlineObjectiveItem sub) {
+  Widget _buildSubCloItem(OutlineObjectiveItem sub, AppColors colors) {
     return Container(
       margin: const EdgeInsets.only(bottom: 6),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.cardBg,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: colors.subCardBorder),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1207,15 +1364,15 @@ class _ThesisDetailBottomSheetState extends State<_ThesisDetailBottomSheet> with
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             decoration: BoxDecoration(
-              color: const Color(0xFFF1F5F9),
+              color: colors.subCardBg,
               borderRadius: BorderRadius.circular(4),
             ),
             child: Text(
               sub.clocode.isNotEmpty ? sub.clocode : '•',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
-                color: Color(0xFF475569),
+                color: colors.textSecondary,
               ),
             ),
           ),
@@ -1224,9 +1381,9 @@ class _ThesisDetailBottomSheetState extends State<_ThesisDetailBottomSheet> with
           Expanded(
             child: Text(
               sub.outlineContent,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12.5,
-                color: Color(0xFF334155),
+                color: colors.textPrimary,
                 height: 1.35,
               ),
             ),
@@ -1246,13 +1403,13 @@ class _ThesisDetailBottomSheetState extends State<_ThesisDetailBottomSheet> with
     );
   }
 
-  Widget _buildSectionTitle(String title) {
+  Widget _buildSectionTitle(String title, [AppColors? colors]) {
     return Text(
       title,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 13,
         fontWeight: FontWeight.w700,
-        color: Color(0xFF64748B),
+        color: colors?.sectionTitle ?? const Color(0xFF64748B),
       ),
     );
   }

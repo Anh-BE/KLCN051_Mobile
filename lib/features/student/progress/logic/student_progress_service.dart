@@ -1,8 +1,9 @@
 import 'dart:convert';
-import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../../../../core/constants/api_endpoints.dart';
 import '../../../../core/utils/storage_service.dart';
+import '../../group/logic/student_group_service.dart';
 import '../model/student_progress_model.dart';
 
 class StudentProgressService {
@@ -19,11 +20,12 @@ class StudentProgressService {
     };
   }
 
-  /// 1. Lấy thông tin đề tài và toàn bộ kế hoạch báo cáo tuần của sinh viên
-  Future<StudentThesisProgressModel> getMyThesisProgress() async {
+  /// 1. Lấy thông tin đề tài và toàn bộ kế hoạch báo cáo tuần của sinh viên theo đợt
+  Future<StudentThesisProgressModel> getMyThesisProgress({int? periodId}) async {
     try {
+      final pId = periodId ?? await StudentGroupService().getCurrentPeriodId();
       final headers = await _getHeaders();
-      final url = Uri.parse('${ApiEndpoints.baseUrl}${ApiEndpoints.studentMyThesisProgress}');
+      final url = Uri.parse('${ApiEndpoints.baseUrl}${ApiEndpoints.studentMyThesisProgress}?periodId=$pId');
       final res = await http.get(url, headers: headers).timeout(const Duration(seconds: 6));
 
       if (res.statusCode == 200) {
@@ -141,10 +143,10 @@ class StudentProgressService {
       }
       request.headers['Accept'] = 'application/json';
 
-      if (filePath != null && filePath.isNotEmpty) {
-        request.files.add(await http.MultipartFile.fromPath('file', filePath, filename: fileName));
-      } else if (fileBytes != null) {
+      if (fileBytes != null) {
         request.files.add(http.MultipartFile.fromBytes('file', fileBytes, filename: fileName));
+      } else if (filePath != null && filePath.isNotEmpty && !kIsWeb) {
+        request.files.add(await http.MultipartFile.fromPath('file', filePath, filename: fileName));
       } else {
         return {'success': false, 'message': 'Không tìm thấy tệp để tải lên.'};
       }

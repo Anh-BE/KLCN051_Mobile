@@ -101,6 +101,7 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
   @override
   Widget build(BuildContext context) {
     final bool isStudent = widget.user.isStudent;
+    final bool isLecturer = widget.user.isLecturer;
 
     // Danh sách trang hiển thị cho Sinh viên (3 Tab)
     final List<Widget> studentPages = [
@@ -116,15 +117,22 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
       ProfileView(user: widget.user),
     ];
 
-    // Danh sách trang cho Giảng viên / Quản lý (đầy đủ)
-    final List<Widget> nonStudentPages = [
-      widget.user.isLecturer ? LecturerHomeView(user: widget.user) : ManagerHomeView(user: widget.user),
-      StudentScheduleView(user: widget.user),
+    // Danh sách trang cho Giảng viên (2 Tab: Trang chủ & Cá nhân - Lịch tiến độ đã có icon ở trang chủ)
+    final List<Widget> lecturerPages = [
+      LecturerHomeView(user: widget.user),
       ProfileView(user: widget.user),
     ];
 
+    // Danh sách trang cho Quản lý (2 Tab: Trang chủ & Cá nhân)
+    final List<Widget> managerPages = [
+      ManagerHomeView(user: widget.user),
+      ProfileView(user: widget.user),
+    ];
 
-    final pages = isStudent ? studentPages : nonStudentPages;
+    final pages = isStudent
+        ? studentPages
+        : (isLecturer ? lecturerPages : managerPages);
+    final safeIndex = _currentIndex >= pages.length ? 0 : _currentIndex;
     final colors = AppColors.of(context);
 
     return Scaffold(
@@ -163,7 +171,7 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
           SafeArea(
             bottom: false,
             child: IndexedStack(
-              index: _currentIndex,
+              index: safeIndex,
               children: pages,
             ),
           ),
@@ -203,11 +211,16 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(26),
             child: Row(
-              children: [
-                _buildNavItem(0, Icons.home_rounded, Icons.home_outlined, tr('nav_home')),
-                _buildNavItem(1, Icons.calendar_month_rounded, Icons.calendar_today_outlined, tr('nav_schedule')),
-                _buildNavItem(2, Icons.person_rounded, Icons.person_outline_rounded, tr('nav_profile')),
-              ],
+              children: isStudent
+                  ? [
+                      _buildNavItem(0, Icons.home_rounded, Icons.home_outlined, tr('nav_home')),
+                      _buildNavItem(1, Icons.calendar_month_rounded, Icons.calendar_today_outlined, tr('nav_schedule')),
+                      _buildNavItem(2, Icons.person_rounded, Icons.person_outline_rounded, tr('nav_profile')),
+                    ]
+                  : [
+                      _buildNavItem(0, Icons.home_rounded, Icons.home_outlined, tr('nav_home')),
+                      _buildNavItem(1, Icons.person_rounded, Icons.person_outline_rounded, tr('nav_profile')),
+                    ],
             ),
           ),
         ),
@@ -217,7 +230,10 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
 
   Widget _buildNavItem(int index, IconData activeIcon, IconData inactiveIcon, String label) {
     final colors = AppColors.of(context);
-    final bool isSelected = _currentIndex == index;
+    final isStudent = widget.user.isStudent;
+    final totalTabs = isStudent ? 3 : 2;
+    final safeIndex = _currentIndex >= totalTabs ? 0 : _currentIndex;
+    final bool isSelected = safeIndex == index;
     final Color color = isSelected ? colors.navActive : colors.navInactive;
 
     return Expanded(

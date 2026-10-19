@@ -105,6 +105,11 @@ class AppToast {
   }) {
     dismissImmediate();
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final effectiveStyle = (style == ToastStyle.frostedLight && isDark)
+        ? ToastStyle.dynamicIslandDark
+        : style;
+
     final overlay = Navigator.of(context, rootNavigator: true).overlay ?? Overlay.of(context);
 
     late OverlayEntry entry;
@@ -114,7 +119,7 @@ class AppToast {
           title: title,
           message: message,
           type: type,
-          style: style,
+          style: effectiveStyle,
           duration: duration,
           onDismiss: () => dismiss(),
           onCreated: (state) {

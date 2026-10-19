@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import '../../../../core/localization/app_language_service.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/huit_loading.dart';
 import '../../../auth/model/user_model.dart';
 import '../logic/student_group_service.dart';
 import '../model/student_group_model.dart';
+import 'widgets/group_members_detail_sheet.dart';
+import 'widgets/join_group_dialog.dart';
+import 'widgets/student_group_card.dart';
 
 class StudentGroupListScreen extends StatefulWidget {
   final UserModel user;
@@ -18,6 +22,8 @@ class _StudentGroupListScreenState extends State<StudentGroupListScreen> {
   final StudentGroupService _groupService = StudentGroupService();
   final TextEditingController _searchController = TextEditingController();
 
+  AppColors get _colors => AppColors.of(context);
+
   String _selectedTab = 'all'; // 'all', 'recruiting', 'full'
   List<StudentGroupModel> _groups = [];
   bool _isLoading = true;
@@ -27,6 +33,12 @@ class _StudentGroupListScreenState extends State<StudentGroupListScreen> {
   void initState() {
     super.initState();
     _fetchGroups();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchGroups() async {
@@ -89,12 +101,13 @@ class _StudentGroupListScreenState extends State<StudentGroupListScreen> {
         context: context,
         builder: (ctx) => AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text('Hủy yêu cầu tham gia', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17)),
-          content: Text('Bạn có chắc muốn hủy yêu cầu tham gia ${group.name}?'),
+          backgroundColor: _colors.cardBg,
+          title: Text('Hủy yêu cầu tham gia', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17, color: _colors.textPrimary)),
+          content: Text('Bạn có chắc muốn hủy yêu cầu tham gia ${group.name}?', style: TextStyle(color: _colors.textSecondary)),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: Text(tr('cancel'), style: const TextStyle(color: Color(0xFF64748B))),
+              child: Text(tr('cancel'), style: TextStyle(color: _colors.textSecondary)),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
@@ -117,138 +130,23 @@ class _StudentGroupListScreenState extends State<StudentGroupListScreen> {
       return;
     }
 
-    // Dialog căn giữa nhập lời nhắn xin vào nhóm (Tránh hoàn toàn tình trạng bị bàn phím che)
-    final noteController = TextEditingController();
-    final submit = await showDialog<bool>(
+    // Modal dialog nhập lời nhắn xin vào nhóm
+    final note = await showDialog<String>(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
-        elevation: 10,
-        backgroundColor: Colors.white,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE0F2FE),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(Icons.group_add_rounded, color: Color(0xFF0284C7), size: 24),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            tr('join_request_title'),
-                            style: const TextStyle(fontSize: 16.5, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            group.name,
-                            style: const TextStyle(fontSize: 12.5, color: Color(0xFF64748B), fontWeight: FontWeight.w600),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('👤 Nhóm trưởng: ${group.leaderName} (${group.leaderCode})',
-                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF1E293B))),
-                      const SizedBox(height: 4),
-                      Text('📞 Liên hệ: ${group.leaderPhone}',
-                          style: const TextStyle(fontSize: 12.5, color: Color(0xFF475569))),
-                      const SizedBox(height: 4),
-                      Text('👥 Hiện có: ${group.currentMembers}/${group.maxMembers} thành viên',
-                          style: const TextStyle(fontSize: 12.5, color: Color(0xFF0084FF), fontWeight: FontWeight.w600)),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 14),
-                TextField(
-                  controller: noteController,
-                  maxLines: 3,
-                  autofocus: false,
-                  style: const TextStyle(fontSize: 13, color: Color(0xFF1E293B)),
-                  decoration: InputDecoration(
-                    hintText: tr('join_request_note_hint'),
-                    hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12.5),
-                    filled: true,
-                    fillColor: const Color(0xFFF1F5F9),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: BorderSide.none,
-                    ),
-                    contentPadding: const EdgeInsets.all(12),
-                  ),
-                ),
-                const SizedBox(height: 18),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          side: const BorderSide(color: Color(0xFFCBD5E1)),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                        onPressed: () => Navigator.pop(ctx, false),
-                        child: Text(tr('cancel'), style: const TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.w600, fontSize: 13)),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          backgroundColor: const Color(0xFF0084FF),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          elevation: 0,
-                        ),
-                        onPressed: () => Navigator.pop(ctx, true),
-                        child: Text(tr('confirm'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13)),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+      builder: (ctx) => JoinGroupDialog(group: group),
     );
 
-    if (submit == true) {
+    if (note != null) {
       try {
-        await _groupService.requestJoinGroup(group.id, note: noteController.text);
+        final success = await _groupService.requestJoinGroup(group.id, note: note);
         if (!mounted) return;
-        _showSnackBar(tr('join_request_success'), isError: false);
-        _fetchGroups();
+        if (success) {
+          _showSnackBar(tr('join_request_success'), isError: false);
+          _fetchGroups();
+        } else {
+          _showSnackBar('Gửi yêu cầu không thành công. Vui lòng thử lại!', isError: true);
+        }
       } catch (e) {
         if (!mounted) return;
         _showSnackBar(e.toString().replaceAll('Exception: ', ''), isError: true);
@@ -261,207 +159,12 @@ class _StudentGroupListScreenState extends State<StudentGroupListScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        height: MediaQuery.of(ctx).size.height * 0.72,
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFCBD5E1),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 18),
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE0F2FE),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.groups_rounded, color: Color(0xFF0084FF), size: 22),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    group.name,
-                    style: const TextStyle(fontSize: 16.5, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            const Divider(color: Color(0xFFF1F5F9), height: 1),
-            const SizedBox(height: 14),
-            Expanded(
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('👥 DANH SÁCH THÀNH VIÊN HIỆN TẠI',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF64748B))),
-                    const SizedBox(height: 8),
-                    ...group.members.map((m) => Container(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: m.isLeader ? const Color(0xFFEFF6FF) : const Color(0xFFF8FAFC),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: m.isLeader ? const Color(0xFFBFDBFE) : const Color(0xFFE2E8F0),
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              CircleAvatar(
-                                radius: 18,
-                                backgroundColor: m.isLeader ? const Color(0xFF0084FF) : const Color(0xFF94A3B8),
-                                child: Text(
-                                  m.fullName.isNotEmpty ? m.fullName[0] : 'S',
-                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Text(
-                                          m.fullName,
-                                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5, color: Color(0xFF0F172A)),
-                                        ),
-                                        if (m.isLeader) ...[
-                                          const SizedBox(width: 6),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                            decoration: BoxDecoration(
-                                              color: const Color(0xFF0084FF),
-                                              borderRadius: BorderRadius.circular(6),
-                                            ),
-                                            child: const Text('Trưởng nhóm',
-                                                style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-                                          ),
-                                        ],
-                                      ],
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text('MSSV: ${m.studentCode.isNotEmpty ? m.studentCode : getStudentCodeForName(m.fullName)} ${m.phone != null ? "• ${m.phone}" : ""}',
-                                        style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        )),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: _isMyGroupLeader(group)
-                  ? Container(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFEFF6FF),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: const Color(0xFFBFDBFE)),
-                      ),
-                      child: const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.workspace_premium_rounded, size: 20, color: Color(0xFF0072E8)),
-                          SizedBox(width: 8),
-                          Text(
-                            'NHÓM DO BẠN TẠO (TRƯỞNG NHÓM)',
-                            style: TextStyle(color: Color(0xFF0072E8), fontWeight: FontWeight.w800, fontSize: 13.5),
-                          ),
-                        ],
-                      ),
-                    )
-                  : _isMyGroupMember(group)
-                      ? Container(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF0FDF4),
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: const Color(0xFFBBF7D0)),
-                          ),
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.check_circle_rounded, size: 20, color: Color(0xFF16A34A)),
-                              SizedBox(width: 8),
-                              Text(
-                                'BẠN ĐÃ LÀ THÀNH VIÊN NHÓM NÀY',
-                                style: TextStyle(color: Color(0xFF16A34A), fontWeight: FontWeight.w800, fontSize: 13.5),
-                              ),
-                            ],
-                          ),
-                        )
-                      : _myGroup != null && _myGroup!.id != group.id
-                          ? Container(
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF1F5F9),
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(color: const Color(0xFFE2E8F0)),
-                              ),
-                              child: Text(
-                                'BẠN ĐÃ THAM GIA NHÓM KHÁC (${_myGroup!.name})',
-                                style: const TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.w700),
-                              ),
-                            )
-                      : group.isFull
-                          ? Container(
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF1F5F9),
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                              child: Text(
-                                tr('btn_full'),
-                                style: const TextStyle(color: Color(0xFF94A3B8), fontWeight: FontWeight.w700),
-                              ),
-                            )
-                          : ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 14),
-                                backgroundColor: group.hasRequested ? const Color(0xFFF59E0B) : const Color(0xFF0084FF),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                                elevation: 0,
-                              ),
-                              onPressed: () {
-                                Navigator.pop(ctx);
-                                _handleJoinRequest(group);
-                              },
-                              child: Text(
-                                group.hasRequested ? tr('btn_requested') : tr('btn_join_group'),
-                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
-                              ),
-                            ),
-            ),
-          ],
-        ),
+      builder: (ctx) => GroupMembersDetailSheet(
+        group: group,
+        isLeader: _isMyGroupLeader(group),
+        isMember: _isMyGroupMember(group),
+        otherGroupName: (_myGroup != null && _myGroup!.id != group.id) ? _myGroup!.name : null,
+        onActionPressed: () => _handleJoinRequest(group),
       ),
     );
   }
@@ -504,14 +207,24 @@ class _StudentGroupListScreenState extends State<StudentGroupListScreen> {
         children: [
           // Ảnh nền
           Positioned.fill(
-            child: Image.asset(
-              'assets/images/bg_main.png',
-              fit: BoxFit.cover,
-              alignment: Alignment.topCenter,
-              errorBuilder: (context, error, stackTrace) => Container(
-                color: const Color(0xFFF1F5F9),
-              ),
-            ),
+            child: _colors.isDark
+                ? Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: _colors.pageGradient,
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      ),
+                    ),
+                  )
+                : Image.asset(
+                    'assets/images/bg_main.png',
+                    fit: BoxFit.cover,
+                    alignment: Alignment.topCenter,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      color: const Color(0xFFF1F5F9),
+                    ),
+                  ),
           ),
           SafeArea(
             child: Column(
@@ -538,7 +251,21 @@ class _StudentGroupListScreenState extends State<StudentGroupListScreen> {
                                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
                                 itemCount: _groups.length,
                                 itemBuilder: (context, index) {
-                                  return _buildGroupCard(_groups[index]);
+                                  final group = _groups[index];
+                                  return StudentGroupCard(
+                                    group: group,
+                                    isLeader: _isMyGroupLeader(group),
+                                    isMember: _isMyGroupMember(group),
+                                    otherGroupName: (_myGroup != null && _myGroup!.id != group.id) ? _myGroup!.name : null,
+                                    onTapDetail: () => _showGroupDetails(group),
+                                    onAction: () => _handleJoinRequest(group),
+                                    onHasOtherGroupTap: (otherName) {
+                                      _showSnackBar(
+                                        'Bạn đã tham gia nhóm "$otherName". Theo quy định, sinh viên chỉ được tham gia 1 nhóm khóa luận.',
+                                        isError: true,
+                                      );
+                                    },
+                                  );
                                 },
                               ),
                             ),
@@ -610,12 +337,12 @@ class _StudentGroupListScreenState extends State<StudentGroupListScreen> {
             child: Container(
               height: 44,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: _colors.searchBg,
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
+                border: Border.all(color: _colors.searchBorder),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.02),
+                    color: Colors.black.withValues(alpha: _colors.isDark ? 0.2 : 0.02),
                     blurRadius: 6,
                     offset: const Offset(0, 2),
                   ),
@@ -624,14 +351,14 @@ class _StudentGroupListScreenState extends State<StudentGroupListScreen> {
               child: TextField(
                 controller: _searchController,
                 onSubmitted: (_) => _fetchGroups(),
-                style: const TextStyle(fontSize: 13, color: Color(0xFF1E293B)),
+                style: TextStyle(fontSize: 13, color: _colors.textPrimary),
                 decoration: InputDecoration(
                   hintText: tr('group_search_hint'),
-                  hintStyle: const TextStyle(fontSize: 12.5, color: Color(0xFF94A3B8)),
+                  hintStyle: TextStyle(fontSize: 12.5, color: _colors.textMuted),
                   prefixIcon: const Icon(Icons.search_rounded, size: 20, color: Color(0xFF0084FF)),
                   suffixIcon: _searchController.text.isNotEmpty
                       ? IconButton(
-                          icon: const Icon(Icons.clear, size: 16, color: Color(0xFF94A3B8)),
+                          icon: Icon(Icons.clear, size: 16, color: _colors.textMuted),
                           onPressed: () {
                             _searchController.clear();
                             _fetchGroups();
@@ -651,12 +378,12 @@ class _StudentGroupListScreenState extends State<StudentGroupListScreen> {
             height: 44,
             padding: const EdgeInsets.symmetric(horizontal: 10),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: _colors.cardBg,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
+              border: Border.all(color: _colors.cardBorder),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.02),
+                  color: Colors.black.withValues(alpha: _colors.isDark ? 0.2 : 0.02),
                   blurRadius: 6,
                   offset: const Offset(0, 2),
                 ),
@@ -665,6 +392,7 @@ class _StudentGroupListScreenState extends State<StudentGroupListScreen> {
             child: PopupMenuButton<String>(
               tooltip: 'Lọc trạng thái',
               offset: const Offset(0, 48),
+              color: _colors.cardBg,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               onSelected: (status) {
                 setState(() {
@@ -688,10 +416,10 @@ class _StudentGroupListScreenState extends State<StudentGroupListScreen> {
                         : _selectedTab == 'recruiting'
                             ? tr('status_recruiting_filter')
                             : tr('status_full_filter'),
-                    style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
+                    style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: _colors.textPrimary),
                   ),
                   const SizedBox(width: 4),
-                  const Icon(Icons.keyboard_arrow_down_rounded, size: 18, color: Color(0xFF64748B)),
+                  Icon(Icons.keyboard_arrow_down_rounded, size: 18, color: _colors.textSecondary),
                 ],
               ),
             ),
@@ -710,7 +438,7 @@ class _StudentGroupListScreenState extends State<StudentGroupListScreen> {
           Icon(
             isCurrent ? Icons.radio_button_checked : Icons.radio_button_off,
             size: 16,
-            color: isCurrent ? const Color(0xFF0084FF) : const Color(0xFF94A3B8),
+            color: isCurrent ? const Color(0xFF0084FF) : _colors.textMuted,
           ),
           const SizedBox(width: 8),
           Text(
@@ -718,366 +446,10 @@ class _StudentGroupListScreenState extends State<StudentGroupListScreen> {
             style: TextStyle(
               fontSize: 13,
               fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w500,
-              color: isCurrent ? const Color(0xFF0084FF) : const Color(0xFF1E293B),
+              color: isCurrent ? const Color(0xFF0084FF) : _colors.textPrimary,
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  // THẺ NHÓM CHUẨN 100% THEO THIẾT KẾ MẪU
-  Widget _buildGroupCard(StudentGroupModel group) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 1. HEADER CỦA CARD: (MÃ NHÓM) TÊN NHÓM + NÚT CHEVRON >
-          InkWell(
-            onTap: () => _showGroupDetails(group),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 14, 10),
-              child: Row(
-                children: [
-                  // Icon hình tròn đánh dấu
-                  Container(
-                    width: 14,
-                    height: 14,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: group.isFull ? const Color(0xFF94A3B8) : const Color(0xFF0084FF),
-                        width: 2.2,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-
-                  // Tiêu đề nhóm
-                  Expanded(
-                    child: Text(
-                      group.name,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF0F172A),
-                        letterSpacing: 0.1,
-                      ),
-                    ),
-                  ),
-
-                  // Mũi tên xem chi tiết
-                  const Icon(Icons.chevron_right_rounded, color: Color(0xFF94A3B8), size: 22),
-                ],
-              ),
-            ),
-          ),
-
-          const Divider(color: Color(0xFFF1F5F9), height: 1, thickness: 1),
-
-          // 2. NỘI DUNG CHI TIẾT DẠNG HÀNG (GIỐNG ẢNH THIẾT KẾ MẪU)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-            child: Column(
-              children: [
-                // Hàng 1: Nhóm trưởng
-                _buildInfoRow(
-                  icon: Icons.person_rounded,
-                  label: tr('group_leader'),
-                  value: '${group.leaderName} (${group.leaderCode})',
-                  isBold: true,
-                ),
-                const SizedBox(height: 10),
-
-                // Hàng 2: Liên hệ
-                _buildInfoRow(
-                  icon: Icons.phone_android_rounded,
-                  label: tr('group_contact'),
-                  value: group.leaderPhone,
-                ),
-                const SizedBox(height: 10),
-
-                // Hàng 3: Ngành học
-                _buildInfoRow(
-                  icon: Icons.school_rounded,
-                  label: tr('group_major'),
-                  value: group.major,
-                ),
-                const SizedBox(height: 10),
-
-                // Hàng 4: Thành viên
-                _buildInfoRow(
-                  icon: Icons.groups_rounded,
-                  label: tr('group_members'),
-                  value: '${group.currentMembers}/${group.maxMembers}',
-                  valueColor: group.isFull ? const Color(0xFFEF4444) : const Color(0xFF0084FF),
-                  isBold: true,
-                ),
-              ],
-            ),
-          ),
-
-          // 3. NÚT HÀNH ĐỘNG DƯỚI CÙNG (XIN VÀO NHÓM)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
-            child: _buildActionButton(group),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Khối dòng thông tin có Icon bo góc nhẹ bên trái
-  Widget _buildInfoRow({
-    required IconData icon,
-    required String label,
-    required String value,
-    Color? valueColor,
-    bool isBold = false,
-    int maxLines = 1,
-  }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Khung icon vuông bo góc màu xanh nhạt
-        Container(
-          padding: const EdgeInsets.all(5.5),
-          decoration: BoxDecoration(
-            color: const Color(0xFFE0F2FE),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(icon, size: 15, color: const Color(0xFF0284C7)),
-        ),
-        const SizedBox(width: 10),
-
-        // Nhãn bên trái
-        SizedBox(
-          width: 88,
-          child: Text(
-            label,
-            style: const TextStyle(
-              fontSize: 12.5,
-              color: Color(0xFF64748B),
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
-
-        // Giá trị bên phải
-        Expanded(
-          child: Text(
-            value,
-            textAlign: TextAlign.right,
-            maxLines: maxLines,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: isBold ? FontWeight.w700 : FontWeight.w600,
-              color: valueColor ?? const Color(0xFF0F172A),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // Nút hành động Xin vào nhóm / Đã gửi yêu cầu / Đã đủ
-  Widget _buildActionButton(StudentGroupModel group) {
-    if (_isMyGroupLeader(group)) {
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 11),
-        decoration: BoxDecoration(
-          color: const Color(0xFFEFF6FF),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFBFDBFE), width: 1.2),
-        ),
-        child: const Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.workspace_premium_rounded, size: 18, color: Color(0xFF0072E8)),
-            SizedBox(width: 6),
-            Text(
-              'NHÓM CỦA BẠN (TRƯỞNG NHÓM)',
-              style: TextStyle(
-                color: Color(0xFF0072E8),
-                fontWeight: FontWeight.w800,
-                fontSize: 13,
-                letterSpacing: 0.2,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    if (_isMyGroupMember(group)) {
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 11),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF0FDF4),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFBBF7D0), width: 1.2),
-        ),
-        child: const Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.check_circle_rounded, size: 18, color: Color(0xFF16A34A)),
-            SizedBox(width: 6),
-            Text(
-              'BẠN ĐÃ LÀ THÀNH VIÊN',
-              style: TextStyle(
-                color: Color(0xFF16A34A),
-                fontWeight: FontWeight.w800,
-                fontSize: 13,
-                letterSpacing: 0.2,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    if (_myGroup != null && _myGroup!.id != group.id) {
-      return InkWell(
-        onTap: () {
-          _showSnackBar(
-            'Bạn đã tham gia nhóm "${_myGroup!.name}". Theo quy định, sinh viên chỉ được tham gia 1 nhóm khóa luận.',
-            isError: true,
-          );
-        },
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 11),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF1F5F9),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
-          ),
-          child: const Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.lock_outline_rounded, size: 16, color: Color(0xFF64748B)),
-              SizedBox(width: 6),
-              Text(
-                'BẠN ĐÃ CÓ NHÓM',
-                style: TextStyle(
-                  color: Color(0xFF64748B),
-                  fontWeight: FontWeight.w700,
-                  fontSize: 12.5,
-                  letterSpacing: 0.2,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    if (group.isFull) {
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 11),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF1F5F9),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.block_rounded, size: 17, color: Color(0xFF94A3B8)),
-            const SizedBox(width: 6),
-            Text(
-              tr('btn_full'),
-              style: const TextStyle(
-                color: Color(0xFF94A3B8),
-                fontWeight: FontWeight.w700,
-                fontSize: 13,
-                letterSpacing: 0.3,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    if (group.hasRequested) {
-      return InkWell(
-        onTap: () => _handleJoinRequest(group),
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 11),
-          decoration: BoxDecoration(
-            color: const Color(0xFFFFFBEB),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFFDE68A), width: 1.2),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.hourglass_top_rounded, size: 17, color: Color(0xFFD97706)),
-              const SizedBox(width: 6),
-              Text(
-                tr('btn_requested'),
-                style: const TextStyle(
-                  color: Color(0xFFD97706),
-                  fontWeight: FontWeight.w800,
-                  fontSize: 13,
-                  letterSpacing: 0.3,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    // Nút Xin vào nhóm (Thiết kế phong cách thẻ duyệt như ảnh mẫu)
-    return InkWell(
-      onTap: () => _handleJoinRequest(group),
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 11),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF0FDF4),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFBBF7D0), width: 1.2),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.check_rounded, size: 18, color: Color(0xFF16A34A)),
-            const SizedBox(width: 6),
-            Text(
-              tr('btn_join_group'),
-              style: const TextStyle(
-                color: Color(0xFF16A34A),
-                fontWeight: FontWeight.w800,
-                fontSize: 13.5,
-                letterSpacing: 0.3,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -1090,15 +462,15 @@ class _StudentGroupListScreenState extends State<StudentGroupListScreen> {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.8),
+              color: _colors.cardBg,
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.groups_outlined, size: 48, color: Color(0xFF94A3B8)),
+            child: Icon(Icons.groups_outlined, size: 48, color: _colors.textMuted),
           ),
           const SizedBox(height: 14),
           Text(
             tr('no_groups_found'),
-            style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: Color(0xFF475569)),
+            style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: _colors.textSecondary),
           ),
         ],
       ),

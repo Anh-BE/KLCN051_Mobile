@@ -1,7 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../logic/notification_service.dart';
-import 'notification_bottom_sheet.dart';
+import 'app_notification_screen.dart';
 
 class NotificationBellButton extends StatefulWidget {
   final Color iconColor;
@@ -79,7 +79,7 @@ class _NotificationBellButtonState extends State<NotificationBellButton>
               shape: const CircleBorder(),
               child: InkWell(
                 customBorder: const CircleBorder(),
-                onTap: () => NotificationBottomSheet.show(context),
+                onTap: () => AppNotificationScreen.show(context),
                 child: Container(
                   padding: const EdgeInsets.all(9),
                   decoration: BoxDecoration(

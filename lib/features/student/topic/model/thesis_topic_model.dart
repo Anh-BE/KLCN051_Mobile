@@ -78,8 +78,10 @@ class ThesisTopicModel {
   }
 
   String get studentLimitDisplay {
-    if (maxStudents <= 0) return 'Chưa giới hạn SV';
-    return 'Tối đa $maxStudents SV (Hiện có $currentStudents SV)';
+    if (maxStudents <= 0) {
+      return 'Chưa giới hạn SV';
+    }
+    return 'Tối đa $maxStudents SV';
   }
 
   String get lecturerInitials {

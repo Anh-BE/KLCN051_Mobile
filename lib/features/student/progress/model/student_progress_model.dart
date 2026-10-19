@@ -113,15 +113,22 @@ class WeeklyPlanModel {
     this.report,
   });
 
+  bool get hasValidDeadline => deadline != null && deadline!.year > 2000;
   bool get isSubmitted => report?.submittedAt != null;
   bool get isGraded => report?.isGraded ?? false;
-  bool get isPassed => (report?.isGraded ?? false) && (report?.isPassed ?? false);
+  bool get isPassed => (report?.isGraded ?? false) && (report?.isPassed == true);
 
   factory WeeklyPlanModel.fromJson(Map<String, dynamic> json) {
     DateTime? parsedDeadline;
     if (json['deadline'] != null) {
-      parsedDeadline = DateTime.tryParse(json['deadline'].toString());
+      final dt = DateTime.tryParse(json['deadline'].toString());
+      if (dt != null && dt.year > 2000) {
+        parsedDeadline = dt;
+      }
     }
+
+    final hasValid = parsedDeadline != null && parsedDeadline.year > 2000;
+    final bool overdue = hasValid && (json['isOverdue'] == true || DateTime.now().isAfter(parsedDeadline));
 
     return WeeklyPlanModel(
       planId: json['planId'] is int ? json['planId'] : (int.tryParse(json['planId']?.toString() ?? '0') ?? 0),
@@ -130,7 +137,7 @@ class WeeklyPlanModel {
       title: _fixEncoding(json['title']?.toString() ?? ''),
       detailedRequirements: _fixEncoding(json['detailedRequirements']?.toString() ?? ''),
       deadline: parsedDeadline,
-      isOverdue: json['isOverdue'] == true,
+      isOverdue: overdue,
       report: json['report'] != null && json['report'] is Map<String, dynamic>
           ? ProgressReportItemModel.fromJson(json['report'] as Map<String, dynamic>)
           : null,
@@ -172,16 +179,29 @@ class ProgressReportItemModel {
       parsedScore = double.tryParse(json['supervisorScore'].toString());
     }
 
+    final feedback = json['supervisorFeedback'] != null ? _fixEncoding(json['supervisorFeedback'].toString()) : null;
+    final status = json['submissionStatus']?.toString() ?? 'Assigned';
+    final hasFeedback = feedback != null && feedback.trim().isNotEmpty;
+    final isExplicitGradedStatus = status == 'Reviewed' || status == 'Approved' || status == 'NeedsRevision';
+
+    // Chỉ coi là đã chấm (isGraded) khi giảng viên thực sự đã cho điểm, có nhận xét, hoặc chuyển sang trạng thái đã đánh giá
+    final bool actuallyGraded = (json['isGraded'] == true || isExplicitGradedStatus || parsedScore != null || hasFeedback)
+        && (parsedScore != null || hasFeedback || isExplicitGradedStatus);
+
+    final bool? parsedIsPassed = actuallyGraded
+        ? (json['isPassed'] == true ? true : (json['isPassed'] == false ? false : null))
+        : null;
+
     return ProgressReportItemModel(
       reportId: json['reportId'] is int ? json['reportId'] : (int.tryParse(json['reportId']?.toString() ?? '0') ?? 0),
       content: _fixEncoding(json['content']?.toString() ?? ''),
       reportFileUrl: json['reportFileUrl']?.toString(),
       submittedAt: parsedSubmittedAt,
-      submissionStatus: json['submissionStatus']?.toString() ?? 'Assigned',
-      supervisorFeedback: json['supervisorFeedback'] != null ? _fixEncoding(json['supervisorFeedback'].toString()) : null,
+      submissionStatus: status,
+      supervisorFeedback: feedback,
       supervisorScore: parsedScore,
-      isPassed: json['isPassed'] == true ? true : (json['isPassed'] == false ? false : null),
-      isGraded: json['isGraded'] == true,
+      isPassed: parsedIsPassed,
+      isGraded: actuallyGraded,
     );
   }
 }

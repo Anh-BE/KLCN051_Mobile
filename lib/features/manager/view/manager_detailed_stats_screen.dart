@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../auth/model/user_model.dart';
 import '../model/manager_stats_model.dart';
 
@@ -129,8 +130,10 @@ class _ManagerDetailedStatsScreenState extends State<ManagerDetailedStatsScreen>
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: colors.scaffoldBg,
       appBar: AppBar(
         elevation: 0,
         backgroundColor: const Color(0xFF1E3A8A),
@@ -175,17 +178,17 @@ class _ManagerDetailedStatsScreenState extends State<ManagerDetailedStatsScreen>
       body: TabBarView(
         controller: _tabController,
         children: [
-          _buildDepartmentTab(),
-          _buildProgressLateTab(),
-          _buildCommitteeTab(),
-          _buildExportReportTab(),
+          _buildDepartmentTab(colors),
+          _buildProgressLateTab(colors),
+          _buildCommitteeTab(colors),
+          _buildExportReportTab(colors),
         ],
       ),
     );
   }
 
   // TAB 1: SỐ LIỆU THEO BỘ MÔN
-  Widget _buildDepartmentTab() {
+  Widget _buildDepartmentTab(AppColors colors) {
     int sumTotal = _deptStats.fold(0, (sum, item) => sum + item.totalTheses);
     int sumApproved = _deptStats.fold(0, (sum, item) => sum + item.approvedTheses);
     int sumPending = _deptStats.fold(0, (sum, item) => sum + item.pendingTheses);
@@ -207,7 +210,7 @@ class _ManagerDetailedStatsScreenState extends State<ManagerDetailedStatsScreen>
               borderRadius: BorderRadius.circular(18),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF2563EB).withOpacity(0.3),
+                  color: const Color(0xFF2563EB).withValues(alpha: 0.3),
                   blurRadius: 12,
                   offset: const Offset(0, 4),
                 ),
@@ -238,13 +241,17 @@ class _ManagerDetailedStatsScreenState extends State<ManagerDetailedStatsScreen>
 
           const SizedBox(height: 20),
 
-          const Text(
+          Text(
             'Chi Tiết Theo Từng Bộ Môn Chuyên Ngành',
-            style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+            style: TextStyle(
+              fontSize: 15.5,
+              fontWeight: FontWeight.w800,
+              color: colors.sectionTitle,
+            ),
           ),
           const SizedBox(height: 12),
 
-          ..._deptStats.map((dept) => _buildDeptCard(dept)),
+          ..._deptStats.map((dept) => _buildDeptCard(dept, colors)),
         ],
       ),
     );
@@ -260,18 +267,22 @@ class _ManagerDetailedStatsScreenState extends State<ManagerDetailedStatsScreen>
     );
   }
 
-  Widget _buildDeptCard(DepartmentStat dept) {
+  Widget _buildDeptCard(DepartmentStat dept, AppColors colors) {
     final double approvalRate = dept.totalTheses > 0 ? (dept.approvedTheses / dept.totalTheses) : 0.0;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.cardBg,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: colors.cardBorder),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2)),
+          BoxShadow(
+            color: colors.isDark ? Colors.black.withValues(alpha: 0.25) : Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
         ],
       ),
       child: Column(
@@ -282,7 +293,7 @@ class _ManagerDetailedStatsScreenState extends State<ManagerDetailedStatsScreen>
               Container(
                 padding: const EdgeInsets.all(7),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFEFF6FF),
+                  color: colors.isDark ? const Color(0xFF1E3A8A).withValues(alpha: 0.3) : const Color(0xFFEFF6FF),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(Icons.apartment_rounded, color: Color(0xFF2563EB), size: 20),
@@ -291,13 +302,15 @@ class _ManagerDetailedStatsScreenState extends State<ManagerDetailedStatsScreen>
               Expanded(
                 child: Text(
                   dept.departmentName,
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Color(0xFF1E293B)),
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: colors.textPrimary),
                 ),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: dept.pendingTheses > 0 ? const Color(0xFFFEF3C7) : const Color(0xFFD1FAE5),
+                  color: dept.pendingTheses > 0
+                      ? (colors.isDark ? const Color(0xFF451A03) : const Color(0xFFFEF3C7))
+                      : (colors.isDark ? const Color(0xFF064E3B) : const Color(0xFFD1FAE5)),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
@@ -305,7 +318,9 @@ class _ManagerDetailedStatsScreenState extends State<ManagerDetailedStatsScreen>
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
-                    color: dept.pendingTheses > 0 ? const Color(0xFFB45309) : const Color(0xFF047857),
+                    color: dept.pendingTheses > 0
+                        ? (colors.isDark ? const Color(0xFFFBBF24) : const Color(0xFFB45309))
+                        : (colors.isDark ? const Color(0xFF34D399) : const Color(0xFF047857)),
                   ),
                 ),
               ),
@@ -314,10 +329,10 @@ class _ManagerDetailedStatsScreenState extends State<ManagerDetailedStatsScreen>
           const SizedBox(height: 12),
           Row(
             children: [
-              Expanded(child: _buildDeptStatInfo('Tổng đề tài', '${dept.totalTheses}')),
-              Expanded(child: _buildDeptStatInfo('Sinh viên', '${dept.studentCount}')),
-              Expanded(child: _buildDeptStatInfo('Giảng viên HD', '${dept.lecturerCount}')),
-              Expanded(child: _buildDeptStatInfo('Tỷ lệ duyệt', '${(approvalRate * 100).toInt()}%')),
+              Expanded(child: _buildDeptStatInfo('Tổng đề tài', '${dept.totalTheses}', colors)),
+              Expanded(child: _buildDeptStatInfo('Sinh viên', '${dept.studentCount}', colors)),
+              Expanded(child: _buildDeptStatInfo('Giảng viên HD', '${dept.lecturerCount}', colors)),
+              Expanded(child: _buildDeptStatInfo('Tỷ lệ duyệt', '${(approvalRate * 100).toInt()}%', colors)),
             ],
           ),
           const SizedBox(height: 10),
@@ -326,7 +341,7 @@ class _ManagerDetailedStatsScreenState extends State<ManagerDetailedStatsScreen>
             child: LinearProgressIndicator(
               value: approvalRate,
               minHeight: 6,
-              backgroundColor: const Color(0xFFF1F5F9),
+              backgroundColor: colors.isDark ? const Color(0xFF26282C) : const Color(0xFFF1F5F9),
               valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF2563EB)),
             ),
           ),
@@ -335,18 +350,18 @@ class _ManagerDetailedStatsScreenState extends State<ManagerDetailedStatsScreen>
     );
   }
 
-  Widget _buildDeptStatInfo(String label, String value) {
+  Widget _buildDeptStatInfo(String label, String value, AppColors colors) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF0F172A))),
-        Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+        Text(value, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: colors.textPrimary)),
+        Text(label, style: TextStyle(fontSize: 11, color: colors.textSecondary)),
       ],
     );
   }
 
   // TAB 2: TIẾN ĐỘ & DANH SÁCH NỘP TRỄ
-  Widget _buildProgressLateTab() {
+  Widget _buildProgressLateTab(AppColors colors) {
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.all(16),
@@ -357,9 +372,11 @@ class _ManagerDetailedStatsScreenState extends State<ManagerDetailedStatsScreen>
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: const Color(0xFFFFF7ED),
+              color: colors.isDark ? const Color(0xFF431407).withValues(alpha: 0.45) : const Color(0xFFFFF7ED),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFFDBA74)),
+              border: Border.all(
+                color: colors.isDark ? const Color(0xFF9A3412) : const Color(0xFFFDBA74),
+              ),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -370,14 +387,22 @@ class _ManagerDetailedStatsScreenState extends State<ManagerDetailedStatsScreen>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'Theo dõi Tác phong & Tiến độ (Cờ Nộp Trễ):',
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF9A3412)),
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: colors.isDark ? const Color(0xFFFDBA74) : const Color(0xFF9A3412),
+                        ),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         'Hệ thống ghi nhận ${_lateSubmissions.length} lượt nộp báo cáo quá mốc 23:59 trong tuần này. Các dữ liệu này được lưu trữ để Giảng viên và Ban chủ nhiệm đánh giá điểm chuyên cần và thái độ làm việc của sinh viên.',
-                        style: const TextStyle(fontSize: 12, color: Color(0xFF7C2D12), height: 1.35),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: colors.isDark ? const Color(0xFFFED7AA) : const Color(0xFF7C2D12),
+                          height: 1.35,
+                        ),
                       ),
                     ],
                   ),
@@ -392,30 +417,30 @@ class _ManagerDetailedStatsScreenState extends State<ManagerDetailedStatsScreen>
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: colors.cardBg,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
+              border: Border.all(color: colors.cardBorder),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Tỷ Lệ Báo Cáo Tiến Độ Tuần Toàn Khoa',
-                  style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                  style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800, color: colors.sectionTitle),
                 ),
                 const SizedBox(height: 14),
                 Row(
                   children: [
                     Expanded(
-                      child: _buildProgressStatTile('82%', 'Đúng hạn (< 23:59)', const Color(0xFF10B981), const Color(0xFFD1FAE5)),
+                      child: _buildProgressStatTile(colors, '82%', 'Đúng hạn (< 23:59)', const Color(0xFF10B981), const Color(0xFFD1FAE5)),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: _buildProgressStatTile('14%', 'Nộp trễ (> 23:59)', const Color(0xFFEA580C), const Color(0xFFFFEDD5)),
+                      child: _buildProgressStatTile(colors, '14%', 'Nộp trễ (> 23:59)', const Color(0xFFEA580C), const Color(0xFFFFEDD5)),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: _buildProgressStatTile('4%', 'Chưa nộp', const Color(0xFFDC2626), const Color(0xFFFEE2E2)),
+                      child: _buildProgressStatTile(colors, '4%', 'Chưa nộp', const Color(0xFFDC2626), const Color(0xFFFEE2E2)),
                     ),
                   ],
                 ),
@@ -425,22 +450,25 @@ class _ManagerDetailedStatsScreenState extends State<ManagerDetailedStatsScreen>
 
           const SizedBox(height: 20),
 
-          const Text(
+          Text(
             'Chi Tiết Các Báo Cáo Nộp Trễ Gần Đây',
-            style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+            style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w800, color: colors.sectionTitle),
           ),
           const SizedBox(height: 10),
 
-          ..._lateSubmissions.map((item) => _buildLateItemCard(item)),
+          ..._lateSubmissions.map((item) => _buildLateItemCard(item, colors)),
         ],
       ),
     );
   }
 
-  Widget _buildProgressStatTile(String percent, String label, Color color, Color bg) {
+  Widget _buildProgressStatTile(AppColors colors, String percent, String label, Color color, Color bg) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(
+        color: colors.isDark ? color.withValues(alpha: 0.18) : bg,
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Column(
         children: [
           Text(percent, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: color)),
@@ -451,16 +479,22 @@ class _ManagerDetailedStatsScreenState extends State<ManagerDetailedStatsScreen>
     );
   }
 
-  Widget _buildLateItemCard(LateSubmissionItem item) {
+  Widget _buildLateItemCard(LateSubmissionItem item, AppColors colors) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.cardBg,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFFDBA74).withOpacity(0.5)),
+        border: Border.all(
+          color: colors.isDark ? const Color(0xFF9A3412).withValues(alpha: 0.5) : const Color(0xFFFDBA74).withValues(alpha: 0.5),
+        ),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 6, offset: const Offset(0, 2)),
+          BoxShadow(
+            color: colors.isDark ? Colors.black.withValues(alpha: 0.2) : Colors.black.withValues(alpha: 0.02),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
         ],
       ),
       child: Column(
@@ -470,21 +504,25 @@ class _ManagerDetailedStatsScreenState extends State<ManagerDetailedStatsScreen>
             children: [
               Text(
                 item.studentName,
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: colors.textPrimary),
               ),
               const SizedBox(width: 8),
-              Text('(${item.studentCode})', style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+              Text('(${item.studentCode})', style: TextStyle(fontSize: 12, color: colors.textSecondary)),
               const Spacer(),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFEDD5),
+                  color: colors.isDark ? const Color(0xFF451A03) : const Color(0xFFFFEDD5),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: const Color(0xFFFB923C)),
                 ),
                 child: Text(
                   'Trễ ${item.lateHours} giờ',
-                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFFC2410C)),
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: colors.isDark ? const Color(0xFFFDBA74) : const Color(0xFFC2410C),
+                  ),
                 ),
               ),
             ],
@@ -492,13 +530,16 @@ class _ManagerDetailedStatsScreenState extends State<ManagerDetailedStatsScreen>
           const SizedBox(height: 6),
           Text(item.groupName, style: const TextStyle(fontSize: 12, color: Color(0xFF0284C7), fontWeight: FontWeight.w600)),
           const SizedBox(height: 6),
-          Text('Nhiệm vụ: ${item.taskName}', style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
+          Text(
+            'Nhiệm vụ: ${item.taskName}',
+            style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: colors.textPrimary),
+          ),
           const SizedBox(height: 4),
           Row(
             children: [
-              const Icon(Icons.alarm_rounded, size: 14, color: Color(0xFF64748B)),
+              Icon(Icons.alarm_rounded, size: 14, color: colors.textMuted),
               const SizedBox(width: 4),
-              Text('Hạn 23:59: ${item.deadlineStr}', style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
+              Text('Hạn 23:59: ${item.deadlineStr}', style: TextStyle(fontSize: 11.5, color: colors.textSecondary)),
               const SizedBox(width: 12),
               const Icon(Icons.history_rounded, size: 14, color: Color(0xFFEA580C)),
               const SizedBox(width: 4),
@@ -507,7 +548,10 @@ class _ManagerDetailedStatsScreenState extends State<ManagerDetailedStatsScreen>
           ),
           if (item.reason.isNotEmpty) ...[
             const SizedBox(height: 6),
-            Text('Lý do sinh viên: "${item.reason}"', style: const TextStyle(fontSize: 11.5, fontStyle: FontStyle.italic, color: Color(0xFF475569))),
+            Text(
+              'Lý do sinh viên: "${item.reason}"',
+              style: TextStyle(fontSize: 11.5, fontStyle: FontStyle.italic, color: colors.textSecondary),
+            ),
           ],
         ],
       ),
@@ -515,7 +559,7 @@ class _ManagerDetailedStatsScreenState extends State<ManagerDetailedStatsScreen>
   }
 
   // TAB 3: HỘI ĐỒNG BẢO VỆ
-  Widget _buildCommitteeTab() {
+  Widget _buildCommitteeTab(AppColors colors) {
     return ListView.builder(
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.all(16),
@@ -526,11 +570,15 @@ class _ManagerDetailedStatsScreenState extends State<ManagerDetailedStatsScreen>
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: colors.cardBg,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
+            border: Border.all(color: colors.cardBorder),
             boxShadow: [
-              BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2)),
+              BoxShadow(
+                color: colors.isDark ? Colors.black.withValues(alpha: 0.25) : Colors.black.withValues(alpha: 0.03),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
             ],
           ),
           child: Column(
@@ -541,7 +589,7 @@ class _ManagerDetailedStatsScreenState extends State<ManagerDetailedStatsScreen>
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFEFF6FF),
+                      color: colors.isDark ? const Color(0xFF1E3A8A).withValues(alpha: 0.3) : const Color(0xFFEFF6FF),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
@@ -553,32 +601,36 @@ class _ManagerDetailedStatsScreenState extends State<ManagerDetailedStatsScreen>
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF1F5F9),
+                      color: colors.isDark ? const Color(0xFF1E222A) : const Color(0xFFF1F5F9),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
                       '${c.assignedGroups} Nhóm SV',
-                      style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFF334155)),
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                        color: colors.textSecondary,
+                      ),
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 8),
-              Text(c.name, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Color(0xFF0F172A))),
+              Text(c.name, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: colors.textPrimary)),
               const SizedBox(height: 8),
-              _buildCouncilMemberRow('Chủ tịch Hội đồng:', c.president),
-              _buildCouncilMemberRow('Thư ký:', c.secretary),
-              _buildCouncilMemberRow('Ủy viên / Phản biện:', c.reviewer),
-              const Divider(height: 18),
+              _buildCouncilMemberRow('Chủ tịch Hội đồng:', c.president, colors),
+              _buildCouncilMemberRow('Thư ký:', c.secretary, colors),
+              _buildCouncilMemberRow('Ủy viên / Phản biện:', c.reviewer, colors),
+              Divider(height: 18, color: colors.divider),
               Row(
                 children: [
-                  const Icon(Icons.meeting_room_outlined, size: 16, color: Color(0xFF64748B)),
+                  Icon(Icons.meeting_room_outlined, size: 16, color: colors.textMuted),
                   const SizedBox(width: 4),
-                  Text(c.room, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
+                  Text(c.room, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: colors.textSecondary)),
                   const Spacer(),
-                  const Icon(Icons.calendar_today_outlined, size: 14, color: Color(0xFF64748B)),
+                  Icon(Icons.calendar_today_outlined, size: 14, color: colors.textMuted),
                   const SizedBox(width: 4),
-                  Text(c.defenseDate, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF1E40AF))),
+                  Text(c.defenseDate, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: colors.sectionTitle)),
                 ],
               ),
             ],
@@ -588,17 +640,17 @@ class _ManagerDetailedStatsScreenState extends State<ManagerDetailedStatsScreen>
     );
   }
 
-  Widget _buildCouncilMemberRow(String role, String name) {
+  Widget _buildCouncilMemberRow(String role, String name, AppColors colors) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 3),
       child: Row(
         children: [
           SizedBox(
             width: 130,
-            child: Text(role, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+            child: Text(role, style: TextStyle(fontSize: 12, color: colors.textSecondary)),
           ),
           Expanded(
-            child: Text(name, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF1E293B))),
+            child: Text(name, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: colors.textPrimary)),
           ),
         ],
       ),
@@ -606,7 +658,7 @@ class _ManagerDetailedStatsScreenState extends State<ManagerDetailedStatsScreen>
   }
 
   // TAB 4: XUẤT BÁO CÁO THỐNG KÊ
-  Widget _buildExportReportTab() {
+  Widget _buildExportReportTab(AppColors colors) {
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.all(16),
@@ -616,56 +668,68 @@ class _ManagerDetailedStatsScreenState extends State<ManagerDetailedStatsScreen>
           Container(
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: colors.cardBg,
               borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
+              border: Border.all(color: colors.cardBorder),
               boxShadow: [
-                BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 3)),
+                BoxShadow(
+                  color: colors.isDark ? Colors.black.withValues(alpha: 0.25) : Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
               ],
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Row(
+                Row(
                   children: [
-                    Icon(Icons.print_rounded, color: Color(0xFF1E3A8A), size: 24),
-                    SizedBox(width: 10),
+                    const Icon(Icons.print_rounded, color: Color(0xFF1E3A8A), size: 24),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         'BIỂU MẪU BÁO CÁO TỔNG HỢP (HUIT)',
-                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: colors.sectionTitle,
+                        ),
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 12),
-                const Text(
+                Text(
                   'Hệ thống tự động kết xuất dữ liệu và biểu mẫu thống kê theo đúng quy chuẩn báo cáo của Ban Chủ Nhiệm Khoa Công Nghệ Thông Tin - Trường ĐH Công Thương TP.HCM.',
-                  style: TextStyle(fontSize: 12.5, color: Color(0xFF475569), height: 1.4),
+                  style: TextStyle(fontSize: 12.5, color: colors.textSecondary, height: 1.4),
                 ),
                 const SizedBox(height: 18),
                 _buildReportOptionItem(
+                  colors: colors,
                   title: 'Báo cáo 01: Danh sách Đề tài & Giảng viên Hướng dẫn',
                   subtitle: 'Định dạng PDF & Excel • 124 đề tài • Đã duyệt 114',
-                  onTap: () => _showExportSuccessDialog('Báo cáo 01: Danh sách Đề tài & GVHD'),
+                  onTap: () => _showExportSuccessDialog('Báo cáo 01: Danh sách Đề tài & GVHD', colors),
                 ),
                 const SizedBox(height: 10),
                 _buildReportOptionItem(
+                  colors: colors,
                   title: 'Báo cáo 02: Tình hình Tiến độ Tuần & Thống kê Nộp trễ',
                   subtitle: 'Theo dõi mốc 23:59 • Ghi nhận 82% đúng hạn, 14% nộp trễ',
-                  onTap: () => _showExportSuccessDialog('Báo cáo 02: Tiến độ & Thống kê Nộp trễ'),
+                  onTap: () => _showExportSuccessDialog('Báo cáo 02: Tiến độ & Thống kê Nộp trễ', colors),
                 ),
                 const SizedBox(height: 10),
                 _buildReportOptionItem(
+                  colors: colors,
                   title: 'Báo cáo 03: Quyết định Phân công Hội đồng Bảo vệ',
                   subtitle: '15 Hội đồng • Lịch phản biện từ 01/12/2026',
-                  onTap: () => _showExportSuccessDialog('Báo cáo 03: Quyết định Hội đồng Bảo vệ'),
+                  onTap: () => _showExportSuccessDialog('Báo cáo 03: Quyết định Hội đồng Bảo vệ', colors),
                 ),
                 const SizedBox(height: 10),
                 _buildReportOptionItem(
+                  colors: colors,
                   title: 'Báo cáo 04: Thống kê Điểm số & Xếp loại Khóa luận',
                   subtitle: 'Phổ điểm theo CĐR • Xuất mẫu biểu phòng Đào tạo',
-                  onTap: () => _showExportSuccessDialog('Báo cáo 04: Bảng điểm & Xếp loại Khóa luận'),
+                  onTap: () => _showExportSuccessDialog('Báo cáo 04: Bảng điểm & Xếp loại Khóa luận', colors),
                 ),
               ],
             ),
@@ -676,20 +740,21 @@ class _ManagerDetailedStatsScreenState extends State<ManagerDetailedStatsScreen>
   }
 
   Widget _buildReportOptionItem({
+    required AppColors colors,
     required String title,
     required String subtitle,
     required VoidCallback onTap,
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: colors.isDark ? const Color(0xFF1E222A) : const Color(0xFFF8FAFC),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: colors.cardBorder),
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-        title: Text(title, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: Color(0xFF1E293B))),
-        subtitle: Text(subtitle, style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
+        title: Text(title, style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: colors.textPrimary)),
+        subtitle: Text(subtitle, style: TextStyle(fontSize: 11.5, color: colors.textSecondary)),
         trailing: ElevatedButton(
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF1E3A8A),
@@ -705,10 +770,11 @@ class _ManagerDetailedStatsScreenState extends State<ManagerDetailedStatsScreen>
     );
   }
 
-  void _showExportSuccessDialog(String reportName) {
+  void _showExportSuccessDialog(String reportName, AppColors colors) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
+        backgroundColor: colors.cardBg,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Row(
           children: [
@@ -719,7 +785,7 @@ class _ManagerDetailedStatsScreenState extends State<ManagerDetailedStatsScreen>
         ),
         content: Text(
           'Đã xử lý và kết xuất thành công "$reportName" theo mẫu biểu Trường ĐH Công Thương TP.HCM.\n\nFile báo cáo sẵn sàng để lưu trữ hoặc in ấn.',
-          style: const TextStyle(fontSize: 13, color: Color(0xFF334155), height: 1.4),
+          style: TextStyle(fontSize: 13, color: colors.textSecondary, height: 1.4),
         ),
         actions: [
           TextButton(
@@ -731,3 +797,4 @@ class _ManagerDetailedStatsScreenState extends State<ManagerDetailedStatsScreen>
     );
   }
 }
+

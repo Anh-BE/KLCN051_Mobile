@@ -76,9 +76,39 @@ class StorageService {
     await prefs.setString(_keyThemeMode, mode);
   }
 
+  static const String _keySelectedPeriodId = 'selected_period_id';
+  static const String _keySelectedPeriodName = 'selected_period_name';
+
+  static Future<void> setSelectedPeriod({
+    required int periodId,
+    required String periodName,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_keySelectedPeriodId, periodId);
+    await prefs.setString(_keySelectedPeriodName, periodName);
+  }
+
+  static Future<int?> getSelectedPeriodId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt(_keySelectedPeriodId);
+  }
+
+  static Future<String?> getSelectedPeriodName() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_keySelectedPeriodName);
+  }
+
+  static Future<void> clearSelectedPeriod() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_keySelectedPeriodId);
+    await prefs.remove(_keySelectedPeriodName);
+  }
+
   static Future<void> clearAuth() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_keyToken);
     await prefs.remove(_keyUser);
+    await prefs.remove(_keySelectedPeriodId);
+    await prefs.remove(_keySelectedPeriodName);
   }
 }

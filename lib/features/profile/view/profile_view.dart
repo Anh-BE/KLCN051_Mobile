@@ -77,34 +77,27 @@ class _ProfileViewState extends State<ProfileView> {
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
 
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: colors.pageGradient,
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          stops: const [0.0, 0.35, 1.0],
+    if (_isRefreshing) {
+      return Container(
+        alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(vertical: 80),
+        child: const HuitLoading(
+          size: 76,
+          message: 'Đang làm mới thông tin...',
         ),
-      ),
-      child: _isRefreshing
-          ? Container(
-              alignment: Alignment.center,
-              padding: const EdgeInsets.symmetric(vertical: 80),
-              child: const HuitLoading(
-                size: 76,
-                message: 'Đang làm mới thông tin...',
-              ),
-            )
-          : RefreshIndicator(
-              onRefresh: _handleRefresh,
-              color: colors.sectionTitle,
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-                child: Column(
-                  children: [
-                    // HEADER DẠNG VIÊN THUỐC NỔI (BLUE CAPSULE)
-                    _buildHeaderPill(),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _handleRefresh,
+      color: colors.sectionTitle,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+        child: Column(
+          children: [
+            // HEADER DẠNG VIÊN THUỐC NỔI (BLUE CAPSULE)
+            _buildHeaderPill(),
 
             const SizedBox(height: 16),
 
@@ -131,11 +124,10 @@ class _ProfileViewState extends State<ProfileView> {
             // CARD 5: NÚT LOGOUT
             _buildLogoutButton(),
 
-                    const SizedBox(height: 70), // Khoảng đệm cho bottom navigation bar
-                  ],
-                ),
-              ),
-            ),
+            const SizedBox(height: 70), // Khoảng đệm cho bottom navigation bar
+          ],
+        ),
+      ),
     );
   }
 

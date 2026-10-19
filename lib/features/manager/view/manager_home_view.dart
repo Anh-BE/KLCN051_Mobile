@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../auth/model/user_model.dart';
 import 'manager_detailed_stats_screen.dart';
 import '../../notification/view/notification_bell_button.dart';
@@ -10,6 +11,8 @@ class ManagerHomeView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       child: Column(
@@ -106,22 +109,37 @@ InkWell(
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
+                    Text(
                       'Dashboard Tổng quan Nhanh',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF1E293B)),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: colors.sectionTitle,
+                      ),
                     ),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFD1FAE5),
+                        color: colors.isDark ? const Color(0xFF064E3B) : const Color(0xFFD1FAE5),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Row(
+                      child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.sync_rounded, size: 12, color: Color(0xFF047857)),
-                          SizedBox(width: 4),
-                          Text('Đồng bộ tự động', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF047857))),
+                          Icon(
+                            Icons.sync_rounded,
+                            size: 12,
+                            color: colors.isDark ? const Color(0xFF34D399) : const Color(0xFF047857),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Đồng bộ tự động',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: colors.isDark ? const Color(0xFF34D399) : const Color(0xFF047857),
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -133,11 +151,11 @@ InkWell(
                 Row(
                   children: [
                     Expanded(
-                      child: _buildMetricTile('124', 'Đề tài đã công bố', Icons.article_rounded, const Color(0xFF2563EB), const Color(0xFFEFF6FF)),
+                      child: _buildMetricTile(colors, '124', 'Đề tài đã công bố', Icons.article_rounded, const Color(0xFF2563EB), const Color(0xFFEFF6FF)),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: _buildMetricTile('248', 'Sinh viên đủ ĐK', Icons.groups_rounded, const Color(0xFF059669), const Color(0xFFECFDF5)),
+                      child: _buildMetricTile(colors, '248', 'Sinh viên đủ ĐK', Icons.groups_rounded, const Color(0xFF059669), const Color(0xFFECFDF5)),
                     ),
                   ],
                 ),
@@ -145,11 +163,11 @@ InkWell(
                 Row(
                   children: [
                     Expanded(
-                      child: _buildMetricTile('35', 'Giảng viên HD', Icons.co_present_rounded, const Color(0xFFD97706), const Color(0xFFFFFBEB)),
+                      child: _buildMetricTile(colors, '35', 'Giảng viên HD', Icons.co_present_rounded, const Color(0xFFD97706), const Color(0xFFFFFBEB)),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: _buildMetricTile('14%', 'Tỷ lệ nộp trễ (23:59)', Icons.assignment_late_rounded, const Color(0xFFEA580C), const Color(0xFFFFEDD5)),
+                      child: _buildMetricTile(colors, '14%', 'Tỷ lệ nộp trễ (23:59)', Icons.assignment_late_rounded, const Color(0xFFEA580C), const Color(0xFFFFEDD5)),
                     ),
                   ],
                 ),
@@ -167,7 +185,7 @@ InkWell(
                     borderRadius: BorderRadius.circular(14),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF1D4ED8).withOpacity(0.35),
+                        color: const Color(0xFF1D4ED8).withValues(alpha: 0.35),
                         blurRadius: 12,
                         offset: const Offset(0, 4),
                       ),
@@ -210,11 +228,14 @@ InkWell(
             child: Container(
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: colors.cardBg,
                 borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: colors.cardBorder, width: 1.2),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
+                    color: colors.isDark
+                        ? Colors.black.withValues(alpha: 0.35)
+                        : Colors.black.withValues(alpha: 0.04),
                     blurRadius: 14,
                     offset: const Offset(0, 4),
                   ),
@@ -223,18 +244,22 @@ InkWell(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Tỷ Lệ Nghiệp Vụ Khóa Luận (HUIT)',
-                    style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w800, color: Color(0xFF1E293B)),
+                    style: TextStyle(
+                      fontSize: 15.5,
+                      fontWeight: FontWeight.w800,
+                      color: colors.sectionTitle,
+                    ),
                   ),
                   const SizedBox(height: 14),
-                  _buildProgressRow('Tỷ lệ đề tài được BCN duyệt', 0.92, '92% (114/124)', const Color(0xFF10B981)),
+                  _buildProgressRow(colors, 'Tỷ lệ đề tài được BCN duyệt', 0.92, '92% (114/124)', const Color(0xFF10B981)),
                   const SizedBox(height: 12),
-                  _buildProgressRow('Tỷ lệ nhóm sinh viên đã ghép đủ', 0.85, '85% (106/124 nhóm)', const Color(0xFF0284C7)),
+                  _buildProgressRow(colors, 'Tỷ lệ nhóm sinh viên đã ghép đủ', 0.85, '85% (106/124 nhóm)', const Color(0xFF0284C7)),
                   const SizedBox(height: 12),
-                  _buildProgressRow('Tỷ lệ sinh viên nộp báo cáo đúng hạn (< 23:59)', 0.82, '82%', const Color(0xFF059669)),
+                  _buildProgressRow(colors, 'Tỷ lệ sinh viên nộp báo cáo đúng hạn (< 23:59)', 0.82, '82%', const Color(0xFF059669)),
                   const SizedBox(height: 12),
-                  _buildProgressRow('Tỷ lệ sinh viên nộp trễ hạn (> 23:59)', 0.14, '14%', const Color(0xFFEA580C)),
+                  _buildProgressRow(colors, 'Tỷ lệ sinh viên nộp trễ hạn (> 23:59)', 0.14, '14%', const Color(0xFFEA580C)),
                 ],
               ),
             ),
@@ -245,14 +270,21 @@ InkWell(
     );
   }
 
-  Widget _buildProgressRow(String title, double value, String label, Color color) {
+  Widget _buildProgressRow(AppColors colors, String title, double value, String label, Color color) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(title, style: const TextStyle(fontSize: 12.5, color: Color(0xFF475569), fontWeight: FontWeight.w600)),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 12.5,
+                color: colors.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
             Text(label, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: color)),
           ],
         ),
@@ -262,7 +294,7 @@ InkWell(
           child: LinearProgressIndicator(
             value: value,
             minHeight: 7,
-            backgroundColor: const Color(0xFFF1F5F9),
+            backgroundColor: colors.isDark ? const Color(0xFF26282C) : const Color(0xFFF1F5F9),
             valueColor: AlwaysStoppedAnimation<Color>(color),
           ),
         ),
@@ -270,15 +302,18 @@ InkWell(
     );
   }
 
-  Widget _buildMetricTile(String value, String title, IconData icon, Color iconColor, Color bgColor) {
+  Widget _buildMetricTile(AppColors colors, String value, String title, IconData icon, Color iconColor, Color bgColor) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.cardBg,
         borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: colors.cardBorder, width: 1.2),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: colors.isDark
+                ? Colors.black.withValues(alpha: 0.3)
+                : Colors.black.withValues(alpha: 0.04),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
@@ -290,7 +325,7 @@ InkWell(
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: bgColor,
+              color: colors.isDark ? iconColor.withValues(alpha: 0.18) : bgColor,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(icon, color: iconColor, size: 24),
@@ -298,9 +333,17 @@ InkWell(
           const SizedBox(height: 12),
           Text(value, style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: iconColor)),
           const SizedBox(height: 2),
-          Text(title, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B), fontWeight: FontWeight.w500)),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 12,
+              color: colors.textSecondary,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
         ],
       ),
     );
   }
 }
+

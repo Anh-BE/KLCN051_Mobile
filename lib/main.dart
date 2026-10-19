@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'core/localization/app_language_service.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/app_theme_service.dart';
@@ -37,6 +38,18 @@ class MyApp extends StatelessWidget {
               theme: AppTheme.lightTheme,
               darkTheme: AppTheme.darkTheme,
               themeMode: themeMode,
+              locale: Locale(lang),
+              supportedLocales: const [
+                Locale('vi', 'VN'),
+                Locale('vi'),
+                Locale('en', 'US'),
+                Locale('en'),
+              ],
+              localizationsDelegates: const [
+                GlobalMaterialLocalizations.delegate,
+                GlobalWidgetsLocalizations.delegate,
+                GlobalCupertinoLocalizations.delegate,
+              ],
               home: const LoginScreen(),
             );
           },

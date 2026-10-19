@@ -137,14 +137,27 @@ class WeeklyTimelineItemModel {
   });
 
   factory WeeklyTimelineItemModel.fromJson(Map<String, dynamic> json) {
-    DateTime parsedDeadline = DateTime.now();
+    DateTime parsedDeadline = DateTime(1900);
     if (json['deadline'] != null) {
-      parsedDeadline = DateTime.tryParse(json['deadline'].toString()) ?? DateTime.now();
+      final dt = DateTime.tryParse(json['deadline'].toString());
+      if (dt != null && dt.year > 2000) {
+        parsedDeadline = dt;
+      }
+    }
+
+    String formattedDeadline = json['formattedDeadline']?.toString() ?? '';
+    if (parsedDeadline.year <= 2000) {
+      formattedDeadline = 'Chưa có hạn nộp';
     }
 
     DateTime? parsedSubmittedAt;
     if (json['submittedAt'] != null) {
       parsedSubmittedAt = DateTime.tryParse(json['submittedAt'].toString());
+    }
+
+    String? formattedSubmittedAt = json['formattedSubmittedAt']?.toString();
+    if (formattedSubmittedAt == null && parsedSubmittedAt != null) {
+      formattedSubmittedAt = '${parsedSubmittedAt.hour.toString().padLeft(2, '0')}:${parsedSubmittedAt.minute.toString().padLeft(2, '0')} ${parsedSubmittedAt.day.toString().padLeft(2, '0')}/${parsedSubmittedAt.month.toString().padLeft(2, '0')}/${parsedSubmittedAt.year}';
     }
 
     return WeeklyTimelineItemModel(
@@ -160,14 +173,14 @@ class WeeklyTimelineItemModel {
       title: json['title']?.toString() ?? 'Nhiệm vụ tuần',
       detailedRequirements: json['detailedRequirements']?.toString() ?? '',
       deadline: parsedDeadline,
-      formattedDeadline: json['formattedDeadline']?.toString() ?? '',
+      formattedDeadline: formattedDeadline,
       reportId: json['reportId'] is int
           ? json['reportId']
           : int.tryParse(json['reportId']?.toString() ?? ''),
       content: json['content']?.toString(),
       reportFileUrl: json['reportFileUrl']?.toString(),
       submittedAt: parsedSubmittedAt,
-      formattedSubmittedAt: json['formattedSubmittedAt']?.toString(),
+      formattedSubmittedAt: formattedSubmittedAt,
       submissionStatus: json['submissionStatus']?.toString() ?? 'NotSubmitted',
       submitterRole: json['submitterRole']?.toString() ?? 'Nhóm trưởng (Đại diện nộp)',
       submitterName: json['submitterName']?.toString(),
@@ -181,6 +194,8 @@ class WeeklyTimelineItemModel {
   }
 
   WeeklyTimelineItemModel copyWith({
+    DateTime? deadline,
+    String? formattedDeadline,
     int? reportId,
     String? content,
     String? reportFileUrl,
@@ -200,8 +215,8 @@ class WeeklyTimelineItemModel {
       weekNumber: weekNumber,
       title: title,
       detailedRequirements: detailedRequirements,
-      deadline: deadline,
-      formattedDeadline: formattedDeadline,
+      deadline: deadline ?? this.deadline,
+      formattedDeadline: formattedDeadline ?? this.formattedDeadline,
       reportId: reportId ?? this.reportId,
       content: content ?? this.content,
       reportFileUrl: reportFileUrl ?? this.reportFileUrl,
@@ -217,52 +232,88 @@ class WeeklyTimelineItemModel {
     );
   }
 
-  // Getters trạng thái
-  bool get isSubmitted => reportId != null;
+  // Getters trạng thái chuẩn xác
+  bool get isSubmitted =>
+      reportId != null ||
+      submittedAt != null ||
+      submissionStatus.toLowerCase() == 'turnedin' ||
+      submissionStatus.toLowerCase() == 'late' ||
+      submissionStatus.toLowerCase() == 'lateturnedin' ||
+      submissionStatus.toLowerCase() == 'submitted' ||
+      submissionStatus.toLowerCase() == 'pending' ||
+      submissionStatus.toLowerCase() == 'reviewed' ||
+      submissionStatus.toLowerCase() == 'approved' ||
+      submissionStatus.toLowerCase() == 'needsrevision' ||
+      (content != null && content!.trim().isNotEmpty);
+
   bool get isApproved =>
       submissionStatus.toLowerCase() == 'approved' ||
       submissionStatus.toLowerCase() == 'daduyet';
-  bool get isPending =>
-      submissionStatus.toLowerCase() == 'pending' ||
-      submissionStatus.toLowerCase() == 'choduyet';
+
   bool get isNeedsRevision =>
       submissionStatus.toLowerCase() == 'needsrevision' ||
       submissionStatus.toLowerCase() == 'canchinhsua';
+
+  bool get isPending =>
+      isSubmitted && !isApproved && !isNeedsRevision;
+
+  bool get hasValidDeadline => deadline.year > 2000;
+
   bool get isOverdue =>
-      submissionStatus.toLowerCase() == 'overdue' ||
-      submissionStatus.toLowerCase() == 'quahan';
-  bool get isNotSubmitted =>
-      submissionStatus.toLowerCase() == 'notsubmitted' ||
-      submissionStatus.toLowerCase() == 'chuanop';
+      !isSubmitted &&
+      hasValidDeadline &&
+      (submissionStatus.toLowerCase() == 'overdue' ||
+          submissionStatus.toLowerCase() == 'quahan' ||
+          DateTime.now().isAfter(deadline));
+
+  bool get isNotSubmitted => !isSubmitted;
 
   // Nhãn hiển thị trạng thái chuẩn App_Mobile.md
   String get statusDisplayText {
     if (isApproved) return 'Đã duyệt';
-    if (isPending) return 'Chờ duyệt';
     if (isNeedsRevision) return 'Cần chỉnh sửa';
+    if (isPending) {
+      if (submissionStatus.toLowerCase() == 'late' || submissionStatus.toLowerCase() == 'lateturnedin') {
+        return 'Nộp muộn';
+      }
+      return 'Chờ duyệt';
+    }
     if (isOverdue) return 'Quá hạn';
+    if (!hasValidDeadline) return 'Chưa có hạn';
     return 'Chưa nộp';
   }
 
   // Màu sắc trạng thái theo Design System
   Color get statusColor {
     if (isApproved) return const Color(0xFF10B981); // Emerald Green
-    if (isPending) return const Color(0xFFF59E0B); // Amber Orange
-    if (isNeedsRevision || isOverdue) return const Color(0xFFEF4444); // Red
+    if (isNeedsRevision) return const Color(0xFFEF4444); // Red
+    if (isPending) {
+      if (submissionStatus.toLowerCase() == 'late' || submissionStatus.toLowerCase() == 'lateturnedin') {
+        return const Color(0xFFF59E0B); // Amber
+      }
+      return const Color(0xFF0072E8); // HUIT Blue
+    }
+    if (isOverdue) return const Color(0xFFEF4444); // Red
     return const Color(0xFF64748B); // Slate Grey
   }
 
   Color get statusBgColor {
     if (isApproved) return const Color(0xFFD1FAE5);
-    if (isPending) return const Color(0xFFFEF3C7);
-    if (isNeedsRevision || isOverdue) return const Color(0xFFFEE2E2);
+    if (isNeedsRevision) return const Color(0xFFFEE2E2);
+    if (isPending) {
+      if (submissionStatus.toLowerCase() == 'late' || submissionStatus.toLowerCase() == 'lateturnedin') {
+        return const Color(0xFFFEF3C7);
+      }
+      return const Color(0xFFEFF6FF);
+    }
+    if (isOverdue) return const Color(0xFFFEE2E2);
     return const Color(0xFFF1F5F9);
   }
 
   IconData get statusIcon {
     if (isApproved) return Icons.check_circle_rounded;
-    if (isPending) return Icons.hourglass_top_rounded;
     if (isNeedsRevision) return Icons.edit_note_rounded;
+    if (isPending) return Icons.hourglass_top_rounded;
     if (isOverdue) return Icons.warning_amber_rounded;
     return Icons.radio_button_unchecked_rounded;
   }

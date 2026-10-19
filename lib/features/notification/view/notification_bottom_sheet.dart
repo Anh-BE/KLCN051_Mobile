@@ -1,20 +1,17 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/storage_service.dart';
 import '../../student/group/view/student_manage_group_screen.dart';
 import '../../student/topic/view/student_topic_list_screen.dart';
 import '../logic/notification_service.dart';
 import '../model/notification_model.dart';
+import 'app_notification_screen.dart';
 
 class NotificationBottomSheet extends StatefulWidget {
   const NotificationBottomSheet({super.key});
 
   static Future<void> show(BuildContext context) {
-    return showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => const NotificationBottomSheet(),
-    );
+    return AppNotificationScreen.show(context);
   }
 
   @override
@@ -32,13 +29,14 @@ class _NotificationBottomSheetState extends State<NotificationBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     final double sheetHeight = MediaQuery.of(context).size.height * 0.82;
 
     return Container(
       height: sheetHeight,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      decoration: BoxDecoration(
+        color: colors.cardBg,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
       ),
       child: Column(
         children: [
@@ -48,10 +46,11 @@ class _NotificationBottomSheetState extends State<NotificationBottomSheet> {
             width: 44,
             height: 4.5,
             decoration: BoxDecoration(
-              color: const Color(0xFFCBD5E1),
+              color: colors.divider,
               borderRadius: BorderRadius.circular(10),
             ),
           ),
+
           const SizedBox(height: 12),
 
           // 2. HEADER
@@ -72,12 +71,12 @@ class _NotificationBottomSheetState extends State<NotificationBottomSheet> {
                   ),
                 ),
                 const SizedBox(width: 10),
-                const Text(
+                Text(
                   'Thông báo',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
-                    color: Color(0xFF0F172A),
+                    color: colors.textPrimary,
                   ),
                 ),
                 const SizedBox(width: 8),

@@ -33,6 +33,7 @@ class AuthService {
 
       if (response.statusCode == 200) {
         final result = LoginResponseModel.fromJson(data);
+        await StorageService.clearSelectedPeriod();
         await StorageService.saveLoginData(
           token: result.token,
           user: result.user,

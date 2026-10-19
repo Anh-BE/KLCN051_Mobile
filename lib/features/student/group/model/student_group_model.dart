@@ -171,12 +171,16 @@ class StudentInvitationModel {
   final int requestId;
   final int groupId;
   final String groupName;
+  final String leaderName;
+  final String leaderCode;
   final String createdAt;
 
   const StudentInvitationModel({
     required this.requestId,
     required this.groupId,
     required this.groupName,
+    this.leaderName = 'Nhóm trưởng',
+    this.leaderCode = '',
     required this.createdAt,
   });
 
@@ -189,6 +193,8 @@ class StudentInvitationModel {
           ? json['groupId']
           : int.tryParse(json['groupId']?.toString() ?? '0') ?? 0,
       groupName: json['groupName'] ?? '',
+      leaderName: (json['leaderName'] ?? json['LeaderName'] ?? 'Nhóm trưởng').toString(),
+      leaderCode: (json['leaderCode'] ?? json['LeaderCode'] ?? '').toString(),
       createdAt: json['createdAt']?.toString() ?? '',
     );
   }
@@ -213,12 +219,13 @@ class CandidateStudentModel {
 
   factory CandidateStudentModel.fromReportJson(Map<String, dynamic> json) {
     final mssv = (json['mssv'] ?? json['MSSV'] ?? '').toString();
+    final sId = (json['studentId'] ?? json['StudentId'] ?? json['userId'] ?? json['UserId'] ?? json['id'] ?? json['Id'] ?? mssv).toString();
     return CandidateStudentModel(
-      id: mssv,
+      id: sId.isNotEmpty ? sId : mssv,
       fullName: (json['fullName'] ?? json['FullName'] ?? '').toString(),
-      studentCode: mssv,
-      major: (json['className'] ?? json['ClassName'] ?? 'Công nghệ thông tin').toString(),
-      phone: (json['email'] ?? json['Email'] ?? '').toString(),
+      studentCode: mssv.isNotEmpty ? mssv : sId,
+      major: (json['className'] ?? json['ClassName'] ?? json['major'] ?? json['Major'] ?? 'Công nghệ thông tin').toString(),
+      phone: (json['email'] ?? json['Email'] ?? json['phoneNumber'] ?? json['phone'] ?? '').toString(),
       hasInvited: false,
     );
   }
@@ -255,6 +262,7 @@ class StudentGroupModel {
   final int maxMembers;
   final String status; // 'recruiting', 'Forming', 'Approved', 'full'
   final String? topicName;
+  final String? registeredThesisId;
   final String? description;
   final bool hasRequested;
   final List<GroupMemberModel> members;
@@ -270,9 +278,10 @@ class StudentGroupModel {
     required this.leaderEmail,
     required this.major,
     required this.currentMembers,
-    this.maxMembers = 3,
+    this.maxMembers = 2,
     required this.status,
     this.topicName,
+    this.registeredThesisId,
     this.description,
     this.hasRequested = false,
     this.members = const [],
@@ -286,6 +295,10 @@ class StudentGroupModel {
       currentMembers < maxMembers;
 
   bool get isFull => currentMembers >= maxMembers || status.toLowerCase() == 'full';
+
+  bool get hasRegisteredTopic =>
+      (topicName != null && topicName!.trim().isNotEmpty) ||
+      (registeredThesisId != null && registeredThesisId!.isNotEmpty);
 
   bool isUserLeader(UserModel user) {
     if (leaderCode.isNotEmpty && leaderCode == user.identifierCode) return true;
@@ -321,6 +334,7 @@ class StudentGroupModel {
     int? maxMembers,
     String? status,
     String? topicName,
+    String? registeredThesisId,
     String? description,
     bool? hasRequested,
     List<GroupMemberModel>? members,
@@ -339,6 +353,7 @@ class StudentGroupModel {
       maxMembers: maxMembers ?? this.maxMembers,
       status: status ?? this.status,
       topicName: topicName ?? this.topicName,
+      registeredThesisId: registeredThesisId ?? this.registeredThesisId,
       description: description ?? this.description,
       hasRequested: hasRequested ?? this.hasRequested,
       members: members ?? this.members,
@@ -375,8 +390,17 @@ class StudentGroupModel {
     final rawContact = (json['leaderEmail'] ?? json['LeaderEmail'] ?? json['contact'] ?? json['Contact'] ?? foundLeader?.email ?? '').toString();
     final rawCount = json['currentMembers'] ?? json['CurrentMembers'] ?? json['memberCount'] ?? json['MemberCount'] ?? memberList.length;
     final int count = rawCount is int ? rawCount : int.tryParse(rawCount.toString()) ?? memberList.length;
-    final rawMax = json['maxMembers'] ?? json['MaxMembers'] ?? 3;
-    final int max = rawMax is int ? rawMax : int.tryParse(rawMax.toString()) ?? 3;
+    final rawMax = json['maxMembers'] ?? json['MaxMembers'] ?? 2;
+    final int max = rawMax is int ? rawMax : int.tryParse(rawMax.toString()) ?? 2;
+
+    final regThesis = json['registeredThesis'] ?? json['RegisteredThesis'];
+    final tName = json['topicName'] ??
+        json['thesisName'] ??
+        json['ThesisName'] ??
+        (regThesis != null ? (regThesis['thesisTitle'] ?? regThesis['ThesisTitle']) : null);
+    final regThesisId = regThesis != null
+        ? (regThesis['thesisId'] ?? regThesis['ThesisId'])?.toString()
+        : (json['thesisId'] ?? json['ThesisId'])?.toString();
 
     return StudentGroupModel(
       id: gId,
@@ -390,7 +414,8 @@ class StudentGroupModel {
       currentMembers: count,
       maxMembers: max,
       status: rawStatus,
-      topicName: json['topicName'] ?? json['thesisName'] ?? json['ThesisName'],
+      topicName: tName,
+      registeredThesisId: regThesisId,
       description: json['description'],
       hasRequested: json['hasRequested'] ?? false,
       members: memberList,

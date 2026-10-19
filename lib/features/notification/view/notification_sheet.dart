@@ -4,6 +4,7 @@ import '../model/notification_model.dart';
 import '../../auth/model/user_model.dart';
 import '../../lecturer/review_report/view/lecturer_weekly_report_list_screen.dart';
 import '../../lecturer/topic/view/lecturer_topic_list_screen.dart';
+import 'app_notification_screen.dart';
 
 class NotificationSheet extends StatefulWidget {
   final UserModel? user;
@@ -16,15 +17,7 @@ class NotificationSheet extends StatefulWidget {
   });
 
   static Future<void> show(BuildContext context, {UserModel? user, VoidCallback? onNotificationChanged}) {
-    return showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => NotificationSheet(
-        user: user,
-        onNotificationChanged: onNotificationChanged,
-      ),
-    );
+    return AppNotificationScreen.show(context, user: user);
   }
 
   @override

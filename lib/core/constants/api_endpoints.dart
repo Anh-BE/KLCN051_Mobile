@@ -53,6 +53,7 @@ class ApiEndpoints {
   // --- Đợt đăng ký & Thống kê ---
   static const String registrationPeriods = '/RegistrationPeriods';
   static const String myRegistrationPeriod = '/RegistrationPeriods/my-period';
+  static const String myRegistrationPeriods = '/RegistrationPeriods/my-periods';
   static const String studentsWithoutGroup = '/ThongKeBaoCao/chi-tiet-sv-chua-nhom';
   static const String reportGroupList = '/ThongKeBaoCao/chi-tiet-nhom';
   static const String unassignedGroups = '/PhanCongDeTai/Groups';

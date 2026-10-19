@@ -75,6 +75,18 @@ class AppColors {
   Color get segmentBg => isDark ? const Color(0xFF232529) : const Color(0xFFF1F5F9);
   Color get switchActive => const Color(0xFF0084FF);
 
+  // Sub-card & Input & Ô tìm kiếm
+  Color get subCardBg => isDark ? const Color(0xFF1E2024) : const Color(0xFFF8FAFC);
+  Color get subCardBorder => isDark ? const Color(0xFF2B2D33) : const Color(0xFFE2E8F0);
+  Color get inputBg => isDark ? const Color(0xFF232529) : const Color(0xFFF1F5F9);
+  Color get inputBorder => isDark ? const Color(0xFF2B2D33) : const Color(0xFFE2E8F0);
+  Color get searchBg => isDark ? const Color(0xFF1E2024) : Colors.white;
+  Color get searchBorder => isDark ? const Color(0xFF2B2D33) : const Color(0xFFE2E8F0);
+
+  // Chip & Badge
+  Color get chipBg => isDark ? const Color(0xFF232529) : const Color(0xFFE2E8F0);
+  Color get chipText => isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569);
+
   // Nút Logout
   Color get logoutBg => isDark ? const Color(0xFF18191C) : Colors.white;
   Color get logoutBorder => isDark ? const Color(0xFF451A1A) : const Color(0xFFFEE2E2);

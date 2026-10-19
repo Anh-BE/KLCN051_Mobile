@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import '../../../../core/constants/api_endpoints.dart';
 import '../../../../core/utils/storage_service.dart';
 import '../../../auth/model/user_model.dart';
+import '../../model/registration_period_model.dart';
 import '../model/student_group_model.dart';
 
 class StudentGroupService {
@@ -12,6 +13,7 @@ class StudentGroupService {
   StudentGroupService._internal();
 
   int? _cachedPeriodId;
+  List<RegistrationPeriodModel>? _cachedMyPeriods;
   StudentGroupModel? _cachedMyGroup;
 
   // Lấy Headers có Bearer Token
@@ -28,11 +30,82 @@ class StudentGroupService {
     _cachedMyGroup = null;
   }
 
-  // 1. Lấy mã đợt đăng ký hiện tại (periodId)
-  Future<int> getCurrentPeriodId() async {
-    if (_cachedPeriodId != null) return _cachedPeriodId!;
+  void invalidatePeriodCache() {
+    _cachedPeriodId = null;
+    _cachedMyPeriods = null;
+    _cachedMyGroup = null;
+  }
+
+  // Lấy danh sách các đợt mà sinh viên hiện tại tham gia (GET /api/RegistrationPeriods/my-periods)
+  Future<List<RegistrationPeriodModel>> getMyPeriods({bool forceRefresh = false}) async {
+    if (!forceRefresh && _cachedMyPeriods != null && _cachedMyPeriods!.isNotEmpty) {
+      return _cachedMyPeriods!;
+    }
 
     try {
+      final headers = await _getHeaders();
+      final url = Uri.parse('${ApiEndpoints.baseUrl}${ApiEndpoints.myRegistrationPeriods}');
+      final res = await http.get(url, headers: headers).timeout(const Duration(seconds: 5));
+
+      if (res.statusCode == 200) {
+        final dynamic decoded = jsonDecode(utf8.decode(res.bodyBytes));
+        if (decoded is List) {
+          final list = decoded.map((item) {
+            return RegistrationPeriodModel.fromJson(item as Map<String, dynamic>);
+          }).toList();
+          _cachedMyPeriods = list;
+          return list;
+        }
+      }
+    } catch (e) {
+      debugPrint('StudentGroupService: getMyPeriods error: $e');
+    }
+
+    return [];
+  }
+
+  // Chuyển đổi đợt làm việc
+  Future<void> switchPeriod(RegistrationPeriodModel period) async {
+    _cachedPeriodId = period.periodId;
+    await StorageService.setSelectedPeriod(
+      periodId: period.periodId,
+      periodName: period.periodName,
+    );
+    invalidateGroupCache();
+  }
+
+  // 1. Lấy mã đợt đăng ký hiện tại (periodId)
+  Future<int> getCurrentPeriodId() async {
+    if (_cachedPeriodId != null) {
+      return _cachedPeriodId!;
+    }
+
+    // 1.1. Kiểm tra ID đã lưu trong SharedPreferences
+    final savedPeriodId = await StorageService.getSelectedPeriodId();
+    if (savedPeriodId != null && savedPeriodId > 0) {
+      _cachedPeriodId = savedPeriodId;
+      return savedPeriodId;
+    }
+
+    try {
+      // 1.2. Lấy danh sách đợt của sinh viên
+      final periods = await getMyPeriods();
+      if (periods.isNotEmpty) {
+        if (periods.length == 1) {
+          final onlyPeriod = periods.first;
+          _cachedPeriodId = onlyPeriod.periodId;
+          await StorageService.setSelectedPeriod(
+            periodId: onlyPeriod.periodId,
+            periodName: onlyPeriod.periodName,
+          );
+          return _cachedPeriodId!;
+        } else {
+          // Khi sinh viên có từ 2 đợt trở lên: tạm dùng đợt đầu tiên cho các lệnh gọi API ban đầu
+          // NHƯNG tuyệt đối KHÔNG lưu vào Storage để StudentHomeView biết sinh viên chưa chọn và bắt buộc hiện Popup chọn đợt!
+          return periods.first.periodId;
+        }
+      }
+
       final headers = await _getHeaders();
       // Thử gọi /api/RegistrationPeriods/my-period
       final myPeriodRes = await http
@@ -46,8 +119,11 @@ class StudentGroupService {
         final decoded = jsonDecode(utf8.decode(myPeriodRes.bodyBytes));
         final pId = decoded['periodId'] ?? decoded['id'];
         if (pId != null) {
-          _cachedPeriodId = pId is int ? pId : int.tryParse(pId.toString());
-          if (_cachedPeriodId != null) return _cachedPeriodId!;
+          final parsed = pId is int ? pId : int.tryParse(pId.toString());
+          if (parsed != null) {
+            _cachedPeriodId = parsed;
+            return _cachedPeriodId!;
+          }
         }
       }
 
@@ -62,15 +138,21 @@ class StudentGroupService {
       if (periodsRes.statusCode == 200) {
         final dynamic decoded = jsonDecode(utf8.decode(periodsRes.bodyBytes));
         if (decoded is List && decoded.isNotEmpty) {
-          // Ưu tiên đợt chưa completed hoặc đợt đầu tiên
           final active = decoded.firstWhere(
-            (p) => p['status'] != 'Completed',
-            orElse: () => decoded.first,
+            (p) {
+              return p['status'] != 'Completed';
+            },
+            orElse: () {
+              return decoded.first;
+            },
           );
           final pId = active['periodId'] ?? active['id'];
           if (pId != null) {
-            _cachedPeriodId = pId is int ? pId : int.tryParse(pId.toString());
-            if (_cachedPeriodId != null) return _cachedPeriodId!;
+            final parsed = pId is int ? pId : int.tryParse(pId.toString());
+            if (parsed != null) {
+              _cachedPeriodId = parsed;
+              return _cachedPeriodId!;
+            }
           }
         }
       }
@@ -92,10 +174,17 @@ class StudentGroupService {
       final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 5));
 
       if (response.statusCode == 200) {
-        final Map<String, dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
-        final group = StudentGroupModel.fromJson(data);
-        _cachedMyGroup = group;
-        return group;
+        final dynamic decoded = jsonDecode(utf8.decode(response.bodyBytes));
+        if (decoded is Map<String, dynamic>) {
+          final gId = (decoded['id'] ?? decoded['Id'] ?? decoded['groupId'] ?? decoded['GroupId'] ?? '').toString();
+          if (gId.isNotEmpty && gId != '0' && gId != 'null') {
+            final group = StudentGroupModel.fromJson(decoded);
+            _cachedMyGroup = group;
+            return group;
+          }
+        }
+        _cachedMyGroup = null;
+        return null;
       } else if (response.statusCode == 404) {
         _cachedMyGroup = null;
         return null;
@@ -139,9 +228,9 @@ class StudentGroupService {
           leaderPhone: phone.trim(),
           leaderEmail: user.email,
           major: major,
-          currentMembers: 1,
-          maxMembers: 3,
-          status: 'recruiting',
+                currentMembers: 1,
+                maxMembers: 2,
+                status: 'recruiting',
           members: [
             GroupMemberModel(
               id: 'm_${user.userId}',
@@ -324,11 +413,12 @@ class StudentGroupService {
     return false;
   }
 
-  // 9. Lấy danh sách lời mời gửi đến tôi (GET /api/ChucNangCuaSinhvien/MyInvitations)
+  // 9. Lấy danh sách lời mời gửi đến tôi (GET /api/ChucNangCuaSinhvien/MyInvitations?periodId={id})
   Future<List<StudentInvitationModel>> getMyInvitations() async {
     try {
+      final periodId = await getCurrentPeriodId();
       final headers = await _getHeaders();
-      final url = Uri.parse('${ApiEndpoints.baseUrl}${ApiEndpoints.studentMyInvitations}');
+      final url = Uri.parse('${ApiEndpoints.baseUrl}${ApiEndpoints.studentMyInvitations}?periodId=$periodId');
 
       final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 5));
       if (response.statusCode == 200) {
@@ -466,6 +556,11 @@ class StudentGroupService {
                 );
               }).toList();
 
+              final rawMax = item['maxMembers'] ?? item['MaxMembers'] ?? 2;
+              final int groupMax = rawMax is int
+                  ? rawMax
+                  : int.tryParse(rawMax.toString()) ?? 2;
+
               realGroups.add(StudentGroupModel(
                 id: '$idx',
                 code: 'N${idx.toString().padLeft(2, '0')}',
@@ -476,8 +571,8 @@ class StudentGroupService {
                 leaderEmail: '$leaderCode@student.huit.edu.vn',
                 major: 'Công nghệ thông tin',
                 currentMembers: memberNames.length,
-                maxMembers: 3,
-                status: memberNames.length >= 3 ? 'full' : 'recruiting',
+                maxMembers: groupMax,
+                status: memberNames.length >= groupMax ? 'full' : 'recruiting',
                 topicName: item['thesisName'],
                 members: membersList,
               ));
@@ -519,11 +614,6 @@ class StudentGroupService {
   }
 
   // --- CÁC THAO TÁC BACKEND CHƯA CÓ ENDPOINT (Xử lý fallback local) ---
-
-  Future<bool> removeMember(String groupId, String memberId) async {
-    debugPrint('StudentGroupService: removeMember - Backend endpoint not yet implemented.');
-    return true;
-  }
 
   Future<bool> cancelInvitation(String studentId) async {
     debugPrint('StudentGroupService: cancelInvitation - Backend endpoint not yet implemented.');

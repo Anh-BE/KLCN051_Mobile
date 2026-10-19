@@ -154,10 +154,12 @@ class NotificationService extends ChangeNotifier {
             }
           }
           _notifications = list;
+          _unreadCount = list.where((n) => !n.isRead).length;
           return list;
         }
       }
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[NotificationService] getNotifications error: $e');
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -174,7 +176,7 @@ class NotificationService extends ChangeNotifier {
     try {
       final token = await StorageService.getToken();
       final url = Uri.parse('${ApiEndpoints.baseUrl}${ApiEndpoints.notificationMarkAsRead(notificationId)}');
-      final response = await http.put(
+      await http.put(
         url,
         headers: {
           'Content-Type': 'application/json',
@@ -182,18 +184,19 @@ class NotificationService extends ChangeNotifier {
           if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
         },
       ).timeout(const Duration(seconds: 10));
-
-      if (response.statusCode == 200) {
-        final index = _notifications.indexWhere((n) => n.notificationId == notificationId);
-        if (index != -1 && !_notifications[index].isRead) {
-          _notifications[index] = _notifications[index].copyWith(isRead: true);
-          if (_unreadCount > 0) _unreadCount--;
-          notifyListeners();
-        }
-        return true;
-      }
     } catch (_) {}
-    return false;
+
+    final index = _notifications.indexWhere((n) {
+      return n.notificationId == notificationId;
+    });
+    if (index != -1 && !_notifications[index].isRead) {
+      _notifications[index] = _notifications[index].copyWith(isRead: true);
+      if (_unreadCount > 0) {
+        _unreadCount--;
+      }
+      notifyListeners();
+    }
+    return true;
   }
 
   /// Đánh dấu tất cả thông báo đã đọc
@@ -201,7 +204,7 @@ class NotificationService extends ChangeNotifier {
     try {
       final token = await StorageService.getToken();
       final url = Uri.parse('${ApiEndpoints.baseUrl}${ApiEndpoints.notificationMarkAllAsRead}');
-      final response = await http.put(
+      await http.put(
         url,
         headers: {
           'Content-Type': 'application/json',
@@ -209,15 +212,14 @@ class NotificationService extends ChangeNotifier {
           if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
         },
       ).timeout(const Duration(seconds: 10));
-
-      if (response.statusCode == 200) {
-        _notifications = _notifications.map((n) => n.copyWith(isRead: true)).toList();
-        _unreadCount = 0;
-        notifyListeners();
-        return true;
-      }
     } catch (_) {}
-    return false;
+
+    _notifications = _notifications.map((n) {
+      return n.copyWith(isRead: true);
+    }).toList();
+    _unreadCount = 0;
+    notifyListeners();
+    return true;
   }
 
   /// Dừng kết nối SignalR (khi logout)

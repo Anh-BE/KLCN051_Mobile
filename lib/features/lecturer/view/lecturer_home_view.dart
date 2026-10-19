@@ -1,527 +1,501 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../../core/localization/app_language_service.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_toast.dart';
 import '../../auth/model/user_model.dart';
-import '../../notification/logic/notification_service.dart';
-import '../../notification/view/notification_sheet.dart';
+import '../../notification/view/notification_bell_button.dart';
 import '../review_report/view/lecturer_weekly_report_list_screen.dart';
-import '../tasks/view/lecturer_manage_tasks_screen.dart';
 import '../topic/view/lecturer_topic_list_screen.dart';
 
-
-class LecturerHomeView extends StatefulWidget {
+class LecturerHomeView extends StatelessWidget {
   final UserModel user;
+  final Function(int)? onTabChange;
 
-  const LecturerHomeView({super.key, required this.user});
-
-  @override
-  State<LecturerHomeView> createState() => _LecturerHomeViewState();
-}
-
-class _LecturerHomeViewState extends State<LecturerHomeView> {
-  final NotificationService _notificationService = NotificationService();
-  int _unreadCount = 0;
-  Timer? _pollTimer;
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchUnreadCount();
-    _pollTimer = Timer.periodic(const Duration(seconds: 5), (_) {
-      if (mounted) _fetchUnreadCount();
-    });
-  }
-
-  @override
-  void dispose() {
-    _pollTimer?.cancel();
-    super.dispose();
-  }
-
-  Future<void> _fetchUnreadCount() async {
-    final count = await _notificationService.getUnreadCount();
-    if (mounted && count != _unreadCount) {
-      setState(() {
-        _unreadCount = count;
-      });
-    }
-  }
-
-  void _openNotifications() {
-    NotificationSheet.show(
-      context,
-      user: widget.user,
-      onNotificationChanged: _fetchUnreadCount,
-    );
-  }
+  const LecturerHomeView({
+    super.key,
+    required this.user,
+    this.onTabChange,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final user = widget.user;
+    final colors = AppColors.of(context);
 
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 1. HEADER GRADIENT DÀNH CHO GIẢNG VIÊN
-          Container(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFF0F766E), Color(0xFF0D9488)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(24),
-                bottomRight: Radius.circular(24),
-              ),
-            ),
-            child: Row(
-              children: [
-                // Avatar tròn
-                Container(
-                  width: 54,
-                  height: 54,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Chiều cao tối thiểu để khung trắng kéo dài xuống sát thanh bottom navigation bar
+        final minCardHeight = (constraints.maxHeight - 200).clamp(360.0, 3000.0);
+
+        return SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 12),
+
+              // 1. HEADER DẠNG VIÊN THUỐC NỔI (FLOATING PILL CAPSULE) CHUẨN ĐỒNG BỘ
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2),
-                    color: Colors.white.withOpacity(0.2),
-                    image: user.avatarUrl != null && user.avatarUrl!.isNotEmpty
-                        ? DecorationImage(image: NetworkImage(user.avatarUrl!), fit: BoxFit.cover)
-                        : null,
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF0072E8), Color(0xFF0091FF), Color(0xFF00A2FF)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(26),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF007AFF).withValues(alpha: 0.35),
+                        blurRadius: 20,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.35),
+                      width: 1.2,
+                    ),
                   ),
-                  child: user.avatarUrl == null || user.avatarUrl!.isEmpty
-                      ? const Icon(Icons.school, color: Colors.white, size: 30)
-                      : null,
+                  child: Row(
+                    children: [
+                      // Avatar tròn viền trắng
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                          color: Colors.white.withValues(alpha: 0.25),
+                          image: user.avatarUrl != null && user.avatarUrl!.isNotEmpty
+                              ? DecorationImage(image: NetworkImage(user.avatarUrl!), fit: BoxFit.cover)
+                              : null,
+                        ),
+                        child: user.avatarUrl == null || user.avatarUrl!.isEmpty
+                            ? const Icon(Icons.school_rounded, color: Colors.white, size: 28)
+                            : null,
+                      ),
+                      const SizedBox(width: 14),
+
+                      // Tên và Mã GV
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              user.fullName,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 17.5,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.2,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              'Mã GV: ${user.identifierCode} • Giảng viên hướng dẫn',
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.88),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // Quả chuông thông báo realtime
+                      const NotificationBellButton(
+                        iconColor: Colors.white,
+                        backgroundColor: Color(0x38FFFFFF),
+                        size: 22,
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(width: 14),
-                Expanded(
+              ),
+
+              const SizedBox(height: 14),
+
+              // 2. KHỐI CARD CHỨC NĂNG CHÍNH KÉO DÀI XUỐNG SÁT BOTTOM BAR
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Container(
+                  constraints: BoxConstraints(minHeight: minCardHeight),
+                  padding: const EdgeInsets.fromLTRB(16, 18, 16, 20),
+                  decoration: BoxDecoration(
+                    color: colors.cardBg,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(
+                      color: colors.cardBorder,
+                      width: 1.2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: colors.isDark
+                            ? Colors.black.withValues(alpha: 0.35)
+                            : const Color(0xFF007AFF).withValues(alpha: 0.08),
+                        blurRadius: 20,
+                        offset: const Offset(0, 6),
+                      ),
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.03),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        user.fullName,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        'Mã GV: ${user.identifierCode} • Giảng viên hướng dẫn',
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.9),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-// Quả chuông thông báo có badge
-                InkWell(
-                  onTap: _openNotifications,
-                  borderRadius: BorderRadius.circular(20),
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.18),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 24),
-                      ),
-                      if (_unreadCount > 0)
-                        Positioned(
-                          top: -2,
-                          right: -2,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                      // Tiêu đề khối
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(5),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFEF4444),
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: Colors.white, width: 1.5),
+                              color: colors.isDark ? const Color(0xFF1E293B) : const Color(0xFFEEF5FE),
+                              borderRadius: BorderRadius.circular(8),
                             ),
-                            constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                            child: const Icon(
+                              Icons.grid_view_rounded,
+                              size: 16,
+                              color: Color(0xFF0072E8),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            tr('main_functions'),
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                              color: colors.textPrimary,
+                              letterSpacing: 0.1,
+                            ),
+                          ),
+                          const Spacer(),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: colors.isDark ? const Color(0xFF232529) : const Color(0xFFF1F5F9),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
                             child: Text(
-                              _unreadCount > 99 ? '99+' : '$_unreadCount',
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
+                              'Khóa luận 2026',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: colors.textSecondary,
                               ),
                             ),
                           ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      // HÀNG 3 CHỨC NĂNG DÀN ĐỀU (PHONG CÁCH SQUIRCLE APP ICON)
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // 1. Đề tài hướng dẫn (Navy Blue)
+                          Expanded(
+                            child: _buildSquircleActionItem(
+                              context: context,
+                              icon: Icons.description_rounded,
+                              title: 'Đề tài hướng dẫn',
+                              color: const Color(0xFF1D4ED8),
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => LecturerTopicListScreen(user: user),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+
+                          // 2. Báo cáo tiến độ (HUIT Blue)
+                          Expanded(
+                            child: _buildSquircleActionItem(
+                              context: context,
+                              icon: Icons.view_timeline_rounded,
+                              title: 'Báo cáo tiến độ',
+                              color: const Color(0xFF0072E8),
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => LecturerWeeklyReportListScreen(user: user),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+
+                          // 3. Chấm điểm CĐR (Royal Purple / Violet)
+                          Expanded(
+                            child: _buildSquircleActionItem(
+                              context: context,
+                              icon: Icons.fact_check_rounded,
+                              title: 'Chấm điểm CĐR',
+                              color: const Color(0xFF7C3AED),
+                              onTap: () {
+                                AppToast.showInfo(
+                                  context,
+                                  'Hiện tại chức năng này đang được triển khai.',
+                                  title: 'Chấm điểm CĐR',
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      // HÀNG 2 THẺ THỐNG KÊ NHANH CỦA GIẢNG VIÊN              ),
+
+                      const SizedBox(height: 18),
+
+                      // HÀNG 2 THẺ THỐNG KÊ NHANH CỦA GIẢNG VIÊN
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildStatCard(
+                              context: context,
+                              value: '6',
+                              label: 'Đề tài hướng dẫn',
+                              icon: Icons.menu_book_rounded,
+                              color: const Color(0xFF0284C7),
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => LecturerTopicListScreen(user: user),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildStatCard(
+                              context: context,
+                              value: '4',
+                              label: 'Báo cáo chờ duyệt',
+                              icon: Icons.pending_actions_rounded,
+                              color: const Color(0xFFF59E0B),
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => LecturerWeeklyReportListScreen(user: user),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 18),
+
+                      // BANNER THÔNG TIN HƯỚNG DẪN TIẾN ĐỘ
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: colors.isDark ? const Color(0xFF1E293B) : const Color(0xFFF0FDF4),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: colors.isDark ? const Color(0xFF334155) : const Color(0xFFDCFCE7),
+                          ),
                         ),
-                    ],
-                  ),
-                ),
-
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 18),
-
-          // 2. LƯỚI CÁC CHỨC NĂNG TRỌNG TÂM CỦA GIẢNG VIÊN
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Container(
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
-                    blurRadius: 14,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Row(
-                    children: [
-                      Icon(Icons.workspace_premium_rounded, color: Color(0xFF0D9488), size: 22),
-                      SizedBox(width: 6),
-                      Text(
-                        'Thao tác dành cho Giảng viên',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF1E293B)),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 18),
-
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _buildQuickAction(
-                        icon: Icons.list_alt_rounded,
-                        label: 'Đề tài & Trạng thái',
-                        bgColor: const Color(0xFFF0FDF4),
-                        iconColor: const Color(0xFF16A34A),
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => LecturerTopicListScreen(user: user),
-                            ),
-                          );
-                        },
-                      ),
-                      _buildQuickAction(
-                        icon: Icons.rate_review_outlined,
-                        label: 'Xem báo cáo tuần',
-                        bgColor: const Color(0xFFEFF6FF),
-                        iconColor: const Color(0xFF2563EB),
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => LecturerWeeklyReportListScreen(user: user),
-                            ),
-                          );
-                        },
-                      ),
-                      _buildQuickAction(
-                        icon: Icons.assignment_outlined,
-                        label: 'Giao việc đề tài',
-                        bgColor: const Color(0xFFFFF7ED),
-                        iconColor: const Color(0xFFEA580C),
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => LecturerManageTasksScreen(user: user),
-                            ),
-                          );
-                        },
-                      ),
-                      _buildQuickAction(
-                        icon: Icons.edit_note_rounded,
-                        label: 'Nhập điểm CĐR',
-                        bgColor: const Color(0xFFFAF5FF),
-                        iconColor: const Color(0xFF9333EA),
-                        onTap: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Chức năng nhập điểm chuẩn đầu ra đang được hoàn thiện!'),
-                              duration: Duration(seconds: 2),
-                            ),
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 18),
-
-                  // THẺ LỚN NỔI BẬT: QUẢN LÝ KẾ HOẠCH & THIẾT LẬP DEADLINE TUẦN (MỐC 23:59)
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF0F766E), Color(0xFF0D9488)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF0D9488).withOpacity(0.3),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
+                        child: Row(
                           children: [
                             Container(
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(10),
+                                color: const Color(0xFF16A34A).withValues(alpha: 0.12),
+                                shape: BoxShape.circle,
                               ),
-                              child: const Icon(Icons.alarm_add_rounded, color: Colors.white, size: 24),
+                              child: const Icon(Icons.info_outline_rounded, color: Color(0xFF16A34A), size: 22),
                             ),
                             const SizedBox(width: 12),
-                            const Expanded(
+                            Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'Kế Hoạch Báo Cáo & Deadline',
+                                    'Theo dõi báo cáo tiến độ tuần',
                                     style: TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w800,
-                                      color: Colors.white,
+                                      color: colors.isDark ? Colors.white : const Color(0xFF14532D),
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 13.5,
                                     ),
                                   ),
-                                  SizedBox(height: 2),
+                                  const SizedBox(height: 3),
                                   Text(
-                                    'Tự động thiết lập mốc 23:59 • Gắn cờ Nộp trễ',
-                                    style: TextStyle(fontSize: 12, color: Colors.white70),
+                                    'Giảng viên duyệt kế hoạch tuần và chấm điểm nhận xét báo cáo định kỳ cho các nhóm sinh viên tại mục Xem báo cáo tuần.',
+                                    style: TextStyle(
+                                      color: colors.isDark ? Colors.white70 : const Color(0xFF166534),
+                                      fontSize: 12,
+                                      height: 1.35,
+                                    ),
                                   ),
                                 ],
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 14),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 42,
-                          child: ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              foregroundColor: const Color(0xFF0F766E),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              elevation: 0,
-                            ),
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => LecturerManageTasksScreen(user: user),
-                                ),
-                              );
-                            },
-                            icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
-                            label: const Text(
-                              'GIAO VIỆC & THIẾT LẬP DEADLINE TUẦN',
-                              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5),
-                            ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 96), // Đệm dưới để không bị Bottom Navigation Bar che mất
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // WIDGET NÚT CHỨC NĂNG SQUIRCLE THEO PHONG CÁCH APP ICON
+  Widget _buildSquircleActionItem({
+    required BuildContext context,
+    required IconData icon,
+    required String title,
+    required Color color,
+    required VoidCallback onTap,
+    String? badgeText,
+  }) {
+    final colors = AppColors.of(context);
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
+      splashColor: color.withValues(alpha: 0.15),
+      highlightColor: color.withValues(alpha: 0.08),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Khung Squircle App Icon
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: color,
+                    borderRadius: BorderRadius.circular(18),
+                    boxShadow: [
+                      BoxShadow(
+                        color: color.withValues(alpha: 0.32),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: Icon(
+                      icon,
+                      color: Colors.white,
+                      size: 28,
+                    ),
+                  ),
+                ),
+                if (badgeText != null && badgeText.isNotEmpty)
+                  Positioned(
+                    top: -3,
+                    right: -4,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                      constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEF4444),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.white, width: 1.5),
+                      ),
+                      child: Center(
+                        child: Text(
+                          badgeText,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.bold,
+                            height: 1,
                           ),
                         ),
-                      ],
+                      ),
                     ),
                   ),
-                ],
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 18),
-
-          // 3. THỐNG KÊ NHANH CỦA GIẢNG VIÊN
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _buildStatCard(
-                    '6',
-                    'Đề tài hướng dẫn',
-                    Icons.menu_book_rounded,
-                    const Color(0xFF0284C7),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => LecturerTopicListScreen(user: user),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: _buildStatCard(
-                    '4',
-                    'Báo cáo chờ duyệt',
-                    Icons.pending_actions_rounded,
-                    const Color(0xFFF59E0B),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => LecturerWeeklyReportListScreen(user: user),
-                        ),
-                      );
-                    },
-                  ),
-                ),
               ],
             ),
-          ),
+            const SizedBox(height: 8),
 
-          const SizedBox(height: 18),
-
-          // 4. BANNER THÔNG TIN HƯỚNG DẪN TIẾN ĐỘ
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF0F766E), Color(0xFF115E59)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(18),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.15),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.info_outline_rounded, color: Colors.white, size: 26),
-                  ),
-                  const SizedBox(width: 14),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Theo dõi báo cáo tiến độ tuần',
-                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          'Giảng viên duyệt kế hoạch tuần và chấm điểm nhận xét báo cáo định kỳ cho các nhóm sinh viên tại mục Xem báo cáo tuần.',
-                          style: TextStyle(color: Colors.white70, fontSize: 12, height: 1.3),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+            // Tên chức năng (Text không viền)
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: colors.textPrimary,
+                height: 1.25,
+                letterSpacing: -0.1,
               ),
             ),
-          ),
-
-          const SizedBox(height: 30),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildStatCard(
-    String value,
-    String label,
-    IconData icon,
-    Color color, {
+  // WIDGET THẺ THỐNG KÊ NHANH
+  Widget _buildStatCard({
+    required BuildContext context,
+    required String value,
+    required String label,
+    required IconData icon,
+    required Color color,
     VoidCallback? onTap,
   }) {
+    final colors = AppColors.of(context);
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: colors.isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
-            ),
-          ],
+          border: Border.all(
+            color: colors.isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+          ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, color: color, size: 26),
+            Row(
+              children: [
+                Icon(icon, color: color, size: 24),
+                const Spacer(),
+                const Icon(Icons.arrow_forward_ios_rounded, size: 12, color: Color(0xFF94A3B8)),
+              ],
+            ),
             const SizedBox(height: 10),
             Text(value, style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: color)),
             const SizedBox(height: 2),
-            Text(label, style: const TextStyle(fontSize: 12.5, color: Color(0xFF64748B), fontWeight: FontWeight.w500)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildQuickAction({
-    required IconData icon,
-    required String label,
-    required Color bgColor,
-    required Color iconColor,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
-      child: SizedBox(
-        width: 88,
-        child: Column(
-          children: [
-            Container(
-              width: 54,
-              height: 54,
-              decoration: BoxDecoration(
-                color: bgColor,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Icon(icon, color: iconColor, size: 26),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF334155),
-                height: 1.25,
-              ),
-            ),
+            Text(label, style: TextStyle(fontSize: 12, color: colors.textSecondary, fontWeight: FontWeight.w600)),
           ],
         ),
       ),

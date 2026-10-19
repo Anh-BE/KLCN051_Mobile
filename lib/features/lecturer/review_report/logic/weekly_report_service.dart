@@ -199,6 +199,118 @@ class WeeklyReportService {
     }
   }
 
+  /// 5. Cập nhật hạn nộp (deadline) cho 1 tuần kế hoạch cụ thể
+  /// PUT /api/ProgressReport/plan/{planId}/deadline
+  Future<Map<String, dynamic>> updatePlanDeadline(int planId, DateTime deadline) async {
+    try {
+      final token = await StorageService.getToken();
+      final url = '${ApiEndpoints.baseUrl}/ProgressReport/plan/$planId/deadline';
+      final isoDeadline = deadline.toIso8601String();
+
+      final response = await http.put(
+        Uri.parse(url),
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'deadline': isoDeadline,
+          'Deadline': isoDeadline,
+        }),
+      ).timeout(const Duration(seconds: 8));
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return {'success': true, 'message': 'Cập nhật hạn nộp thành công!'};
+      } else {
+        // Fallback route nếu backend dùng /BaoCaoTienDo/plan/{planId}/deadline
+        final fallbackUrl = '${ApiEndpoints.baseUrl}/BaoCaoTienDo/plan/$planId/deadline';
+        final fallbackRes = await http.put(
+          Uri.parse(fallbackUrl),
+          headers: {
+            'Content-Type': 'application/json',
+            if (token != null) 'Authorization': 'Bearer $token',
+          },
+          body: jsonEncode({
+            'deadline': isoDeadline,
+            'Deadline': isoDeadline,
+          }),
+        ).timeout(const Duration(seconds: 8));
+
+        if (fallbackRes.statusCode >= 200 && fallbackRes.statusCode < 300) {
+          return {'success': true, 'message': 'Cập nhật hạn nộp thành công!'};
+        }
+
+        try {
+          final dynamic errorBody = jsonDecode(utf8.decode(response.bodyBytes));
+          final msg = errorBody is Map
+              ? (errorBody['error'] ?? errorBody['message'] ?? 'Lỗi từ máy chủ')
+              : 'Lỗi từ máy chủ';
+          return {'success': false, 'message': msg.toString()};
+        } catch (_) {
+          return {'success': false, 'message': 'Lỗi cập nhật hạn nộp (${response.statusCode})'};
+        }
+      }
+    } catch (e) {
+      debugPrint('[WeeklyReportService] Error updating deadline: $e');
+      return {'success': false, 'message': 'Không thể kết nối đến máy chủ: $e'};
+    }
+  }
+
+  /// 6. Cấu hình tự động hạn chót đồng loạt 12 tuần (+7 ngày mỗi tuần, 23:59:59)
+  Future<Map<String, dynamic>> updateBatchWeeklyDeadlines({
+    required List<WeeklyTimelineItemModel> weeks,
+    required DateTime week1Deadline,
+  }) async {
+    final sortedWeeks = List<WeeklyTimelineItemModel>.from(weeks)
+      ..sort((a, b) => a.weekNumber.compareTo(b.weekNumber));
+
+    if (sortedWeeks.isEmpty) {
+      return {'success': false, 'message': 'Không có dữ liệu tuần để cấu hình.'};
+    }
+
+    // Luôn cố định giờ chót là 23:59:59 của ngày được chọn
+    final baseDeadline = DateTime(
+      week1Deadline.year,
+      week1Deadline.month,
+      week1Deadline.day,
+      23,
+      59,
+      59,
+    );
+
+    int successCount = 0;
+    String? lastError;
+
+    for (int i = 0; i < sortedWeeks.length; i++) {
+      final item = sortedWeeks[i];
+      // Tuần 1: baseDeadline, các tuần tiếp theo +7 ngày lũy tiến
+      final weekDeadline = baseDeadline.add(Duration(days: (item.weekNumber - 1) * 7));
+      final res = await updatePlanDeadline(item.planId, weekDeadline);
+      if (res['success'] == true) {
+        successCount++;
+      } else {
+        lastError = res['message'];
+      }
+    }
+
+    if (successCount == sortedWeeks.length) {
+      return {
+        'success': true,
+        'message': 'Đã thiết lập thành công hạn chót cho toàn bộ ${sortedWeeks.length} tuần!',
+      };
+    } else if (successCount > 0) {
+      return {
+        'success': true,
+        'message': 'Đã cập nhật $successCount/${sortedWeeks.length} tuần. (Lỗi: $lastError)',
+      };
+    } else {
+      return {
+        'success': false,
+        'message': 'Cập nhật thất bại: ${lastError ?? 'Lỗi không xác định'}',
+      };
+    }
+  }
+
   String _removeDiacritics(String str) {
     final regex = RegExp(r'[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữìíỉĩđỳýỵỷỹ]', caseSensitive: false);
     return str.replaceAllMapped(regex, (match) {
