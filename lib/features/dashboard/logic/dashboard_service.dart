@@ -154,7 +154,16 @@ class DashboardService {
       final pendingPlans = progress.weeklyPlans.where((p) => !p.isSubmitted).toList();
       if (pendingPlans.isNotEmpty) {
         final nextPlan = pendingPlans.first;
-        upcomingTitle = 'Tuần ${nextPlan.weekNumber}: ${nextPlan.title}';
+        var cleanTitle = nextPlan.title.trim();
+        final repeatPattern = RegExp(r'^(Tuần\s*\d+\s*[:\-\.]?\s*)+', caseSensitive: false);
+        final match = repeatPattern.firstMatch(cleanTitle);
+        if (match != null) {
+          final remainder = cleanTitle.substring(match.end).trim();
+          cleanTitle = remainder.isNotEmpty ? 'Tuần ${nextPlan.weekNumber}: $remainder' : 'Tuần ${nextPlan.weekNumber}';
+        } else {
+          cleanTitle = cleanTitle.isNotEmpty ? 'Tuần ${nextPlan.weekNumber}: $cleanTitle' : 'Tuần ${nextPlan.weekNumber}';
+        }
+        upcomingTitle = cleanTitle;
         upcomingDeadline = nextPlan.deadline;
         hasUpcoming = true;
 

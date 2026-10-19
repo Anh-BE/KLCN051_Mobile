@@ -185,6 +185,9 @@ class _StudentHomeViewState extends State<StudentHomeView> {
                           return DonutStatCard(
                             title: 'Tiến độ Báo cáo & Nhiệm vụ',
                             filterPillText: stats.periodName.isNotEmpty ? stats.periodName : 'HK1 (2026-2027)',
+                            onFilterTap: _studentPeriods.length >= 2
+                                ? () => _openPeriodSelectionDialog(canCancel: true)
+                                : null,
                             topSummaryWidget: stats.hasUpcomingDeadline
                                 ? Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
