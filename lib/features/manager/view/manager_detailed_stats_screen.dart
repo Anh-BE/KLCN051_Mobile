@@ -1,12 +1,20 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/donut_stat_card.dart';
 import '../../auth/model/user_model.dart';
+import '../../dashboard/logic/dashboard_service.dart';
+import '../../dashboard/model/dashboard_stats_models.dart';
 import '../model/manager_stats_model.dart';
 
 class ManagerDetailedStatsScreen extends StatefulWidget {
   final UserModel user;
+  final int initialTabIndex;
 
-  const ManagerDetailedStatsScreen({super.key, required this.user});
+  const ManagerDetailedStatsScreen({
+    super.key,
+    required this.user,
+    this.initialTabIndex = 0,
+  });
 
   @override
   State<ManagerDetailedStatsScreen> createState() => _ManagerDetailedStatsScreenState();
@@ -14,112 +22,60 @@ class ManagerDetailedStatsScreen extends StatefulWidget {
 
 class _ManagerDetailedStatsScreenState extends State<ManagerDetailedStatsScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  final DashboardService _dashboardService = DashboardService();
+  AdminDashboardStats? _adminStats = AdminDashboardStats();
+  AdminDashboardStats get _safeStats => _adminStats ?? AdminDashboardStats();
+  bool _isLoadingStats = true;
+  bool _isLoadingAll = true;
 
-  final List<DepartmentStat> _deptStats = [
-    DepartmentStat(
-      departmentName: 'Công nghệ Phần mềm',
-      totalTheses: 46,
-      approvedTheses: 42,
-      pendingTheses: 4,
-      studentCount: 92,
-      lecturerCount: 14,
-    ),
-    DepartmentStat(
-      departmentName: 'An toàn Thông tin',
-      totalTheses: 32,
-      approvedTheses: 30,
-      pendingTheses: 2,
-      studentCount: 64,
-      lecturerCount: 9,
-    ),
-    DepartmentStat(
-      departmentName: 'Hệ thống Thông tin',
-      totalTheses: 28,
-      approvedTheses: 26,
-      pendingTheses: 2,
-      studentCount: 56,
-      lecturerCount: 8,
-    ),
-    DepartmentStat(
-      departmentName: 'Khoa học Dữ liệu & TTNT',
-      totalTheses: 18,
-      approvedTheses: 16,
-      pendingTheses: 2,
-      studentCount: 36,
-      lecturerCount: 6,
-    ),
-  ];
-
-  final List<LateSubmissionItem> _lateSubmissions = [
-    LateSubmissionItem(
-      studentCode: '2001230848',
-      studentName: 'Nguyễn Văn C',
-      groupName: 'Nhóm KLCN-14 (AI Detection)',
-      taskName: 'Báo cáo Tuần 4: Thiết kế CSDL',
-      deadlineStr: '07/10/2026 23:59',
-      submittedTimeStr: '08/10/2026 03:15',
-      lateHours: 4,
-      reason: 'Cần sửa đổi quan hệ bảng khóa ngoại và kiểm thử dữ liệu',
-    ),
-    LateSubmissionItem(
-      studentCode: '2001230852',
-      studentName: 'Vũ Văn G',
-      groupName: 'Nhóm KLCN-08 (Flutter IoT)',
-      taskName: 'Báo cáo Tuần 3: Tài liệu kiến trúc',
-      deadlineStr: '30/09/2026 23:59',
-      submittedTimeStr: '01/10/2026 08:30',
-      lateHours: 9,
-      reason: 'Bổ sung sơ đồ deployment vật lý',
-    ),
-    LateSubmissionItem(
-      studentCode: '2001230855',
-      studentName: 'Đỗ Thị K',
-      groupName: 'Nhóm KLCN-21 (Blockchain Cert)',
-      taskName: 'Đề cương chi tiết khóa luận',
-      deadlineStr: '23/09/2026 23:59',
-      submittedTimeStr: '24/09/2026 01:45',
-      lateHours: 2,
-      reason: 'Gặp sự cố kết nối mạng lúc tải file',
-    ),
-  ];
-
-  final List<CommitteeStat> _committees = [
-    CommitteeStat(
-      committeeCode: 'HD-CNPM-01',
-      name: 'Hội đồng Bảo vệ CNPM 01',
-      president: 'TS. Phùng Thế Bảo',
-      secretary: 'ThS. Nguyễn Hải Yến',
-      reviewer: 'ThS. Vũ Văn Vinh',
-      assignedGroups: 6,
-      room: 'Phòng B.402',
-      defenseDate: '02/12/2026',
-    ),
-    CommitteeStat(
-      committeeCode: 'HD-ATTT-01',
-      name: 'Hội đồng Bảo vệ ATTT 01',
-      president: 'ThS. Ngô Dương Hà',
-      secretary: 'ThS. Trần Việt Anh',
-      reviewer: 'ThS. Đinh Thị Mận',
-      assignedGroups: 5,
-      room: 'Phòng B.403',
-      defenseDate: '03/12/2026',
-    ),
-    CommitteeStat(
-      committeeCode: 'HD-KHDL-01',
-      name: 'Hội đồng Bảo vệ KHDL 01',
-      president: 'TS. Đặng Thị Hồng Nhung',
-      secretary: 'ThS. Nguyễn Minh Tú',
-      reviewer: 'ThS. Ngô Đức Huy',
-      assignedGroups: 4,
-      room: 'Phòng B.405',
-      defenseDate: '04/12/2026',
-    ),
-  ];
+  List<DepartmentStat> _deptStats = [];
+  List<LateSubmissionItem> _lateSubmissions = [];
+  List<CommitteeStat> _committees = [];
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(
+      length: 4,
+      vsync: this,
+      initialIndex: widget.initialTabIndex.clamp(0, 3),
+    );
+    _loadAllRealData();
+  }
+
+  Future<void> _loadAllRealData() async {
+    if (!mounted) return;
+    setState(() {
+      _isLoadingStats = true;
+      _isLoadingAll = true;
+    });
+
+    try {
+      final results = await Future.wait([
+        _dashboardService.getAdminStats(),
+        _dashboardService.getDepartmentStats(),
+        _dashboardService.getLateSubmissions(),
+        _dashboardService.getDefenseCommittees(),
+      ]);
+
+      if (mounted) {
+        setState(() {
+          _adminStats = results[0] as AdminDashboardStats;
+          _deptStats = results[1] as List<DepartmentStat>;
+          _lateSubmissions = results[2] as List<LateSubmissionItem>;
+          _committees = results[3] as List<CommitteeStat>;
+          _isLoadingStats = false;
+          _isLoadingAll = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _isLoadingStats = false;
+          _isLoadingAll = false;
+        });
+      }
+    }
   }
 
   @override
@@ -145,7 +101,7 @@ class _ManagerDetailedStatsScreenState extends State<ManagerDetailedStatsScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'SỐ LIỆU TỔNG HỢP CHI TIẾT',
+              'DASHBOARD & XEM CHI TIẾT',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w800,
@@ -154,11 +110,19 @@ class _ManagerDetailedStatsScreenState extends State<ManagerDetailedStatsScreen>
               ),
             ),
             Text(
-              'Khoa Công Nghệ Thông Tin • HUIT',
+              'Ban Chủ Nhiệm / Trưởng Bộ Môn • HUIT',
               style: TextStyle(fontSize: 11, color: Colors.white70, fontWeight: FontWeight.w500),
             ),
           ],
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded, color: Colors.white, size: 22),
+            tooltip: 'Làm mới số liệu thực tế',
+            onPressed: _loadAllRealData,
+          ),
+          const SizedBox(width: 4),
+        ],
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,
@@ -168,7 +132,7 @@ class _ManagerDetailedStatsScreenState extends State<ManagerDetailedStatsScreen>
           unselectedLabelColor: Colors.white70,
           labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
           tabs: const [
-            Tab(text: 'Bộ Môn & Đề Tài'),
+            Tab(text: 'Tổng Quan & Bộ Môn'),
             Tab(text: 'Tiến Độ & Nộp Trễ'),
             Tab(text: 'Hội Đồng Bảo Vệ'),
             Tab(text: 'Xuất Báo Cáo'),
@@ -187,12 +151,13 @@ class _ManagerDetailedStatsScreenState extends State<ManagerDetailedStatsScreen>
     );
   }
 
-  // TAB 1: SỐ LIỆU THEO BỘ MÔN
+  // TAB 1: SỐ LIỆU TỔNG QUAN & THEO BỘ MÔN
   Widget _buildDepartmentTab(AppColors colors) {
     int sumTotal = _deptStats.fold(0, (sum, item) => sum + item.totalTheses);
     int sumApproved = _deptStats.fold(0, (sum, item) => sum + item.approvedTheses);
     int sumPending = _deptStats.fold(0, (sum, item) => sum + item.pendingTheses);
     int sumStudents = _deptStats.fold(0, (sum, item) => sum + item.studentCount);
+    final stats = _safeStats;
 
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
@@ -200,7 +165,138 @@ class _ManagerDetailedStatsScreenState extends State<ManagerDetailedStatsScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Thẻ tóm tắt toàn khoa
+          // 1. BIỂU ĐỒ 3 VÒNG TRÒN DONUT THỐNG KÊ TOÀN KHOA
+          if (_isLoadingStats)
+            Container(
+              height: 180,
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: colors.cardBg,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: colors.cardBorder),
+              ),
+              child: const Center(
+                child: CircularProgressIndicator(color: Color(0xFF1D4ED8), strokeWidth: 2.5),
+              ),
+            )
+          else ...[
+            DonutStatCard(
+              title: 'Tình hình Đề tài & Hướng dẫn Toàn Khoa',
+              filterPillText: stats.periodName.isNotEmpty ? stats.periodName : 'HK1 (2026-2027)',
+              topSummaryWidget: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: colors.isDark ? const Color(0xFF1E293B) : const Color(0xFFEFF6FF),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: colors.isDark ? const Color(0xFF334155) : const Color(0xFFBFDBFE)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.auto_stories_rounded, size: 20, color: Color(0xFF1D4ED8)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: RichText(
+                        text: TextSpan(
+                          style: TextStyle(fontSize: 13, color: colors.textPrimary),
+                          children: [
+                            const TextSpan(text: 'Tổng số đề tài toàn khoa: '),
+                            TextSpan(
+                              text: '${stats.totalTheses} đề tài',
+                              style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF1D4ED8), fontSize: 14),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              items: [
+                DonutStatItem(
+                  value: stats.registeredTheses,
+                  label: 'Được đăng ký',
+                  progressPercent: stats.totalTheses > 0 ? stats.registeredTheses / stats.totalTheses : 0.0,
+                  color: const Color(0xFF2563EB),
+                ),
+                DonutStatItem(
+                  value: stats.supervisedTheses,
+                  label: 'Được hướng dẫn',
+                  progressPercent: stats.totalTheses > 0 ? stats.supervisedTheses / stats.totalTheses : 0.0,
+                  color: const Color(0xFF10B981),
+                ),
+                DonutStatItem(
+                  value: stats.activeLecturersCount,
+                  label: 'GVHD trong kỳ',
+                  progressPercent: stats.activeLecturersCount > 0 ? 0.8 : 0.0,
+                  color: const Color(0xFF8B5CF6),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // 2. KHỐI TỶ LỆ NGHIỆP VỤ KHÓA LUẬN HUIT
+            Container(
+              padding: const EdgeInsets.all(18),
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: colors.cardBg,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: colors.cardBorder, width: 1.2),
+                boxShadow: [
+                  BoxShadow(
+                    color: colors.isDark
+                        ? Colors.black.withValues(alpha: 0.35)
+                        : Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 14,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Tỷ Lệ Nghiệp Vụ Khóa Luận (HUIT)',
+                    style: TextStyle(
+                      fontSize: 15.5,
+                      fontWeight: FontWeight.w800,
+                      color: colors.sectionTitle,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  _buildBusinessProgressRow(
+                    colors,
+                    'Tỷ lệ đề tài được SV đăng ký',
+                    stats.totalTheses > 0 ? (stats.registeredTheses / stats.totalTheses) : 0.0,
+                    stats.totalTheses > 0
+                        ? '${((stats.registeredTheses / stats.totalTheses) * 100).toStringAsFixed(1)}% (${stats.registeredTheses}/${stats.totalTheses})'
+                        : '0%',
+                    const Color(0xFF10B981),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildBusinessProgressRow(
+                    colors,
+                    'Tỷ lệ đề tài đã có Giảng viên hướng dẫn',
+                    stats.totalTheses > 0 ? (stats.supervisedTheses / stats.totalTheses) : 0.0,
+                    stats.totalTheses > 0
+                        ? '${((stats.supervisedTheses / stats.totalTheses) * 100).toStringAsFixed(1)}% (${stats.supervisedTheses}/${stats.totalTheses})'
+                        : '0%',
+                    const Color(0xFF0284C7),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildBusinessProgressRow(
+                    colors,
+                    'Đội ngũ Giảng viên hướng dẫn tham gia',
+                    stats.activeLecturersCount > 0 ? 1.0 : 0.0,
+                    '${stats.activeLecturersCount} Giảng viên',
+                    const Color(0xFF8B5CF6),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
+          // 3. Thẻ tóm tắt toàn khoa
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -267,6 +363,42 @@ class _ManagerDetailedStatsScreenState extends State<ManagerDetailedStatsScreen>
     );
   }
 
+  Widget _buildBusinessProgressRow(AppColors colors, String title, double value, String label, Color color) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontSize: 12.5,
+                  color: colors.textSecondary,
+                  fontWeight: FontWeight.w600,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(label, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: color)),
+          ],
+        ),
+        const SizedBox(height: 8),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: LinearProgressIndicator(
+            value: value.clamp(0.0, 1.0),
+            minHeight: 8,
+            backgroundColor: colors.isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9),
+            valueColor: AlwaysStoppedAnimation<Color>(color),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildDeptCard(DepartmentStat dept, AppColors colors) {
     final double approvalRate = dept.totalTheses > 0 ? (dept.approvedTheses / dept.totalTheses) : 0.0;
 
@@ -308,19 +440,25 @@ class _ManagerDetailedStatsScreenState extends State<ManagerDetailedStatsScreen>
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: dept.pendingTheses > 0
-                      ? (colors.isDark ? const Color(0xFF451A03) : const Color(0xFFFEF3C7))
-                      : (colors.isDark ? const Color(0xFF064E3B) : const Color(0xFFD1FAE5)),
+                  color: dept.totalTheses == 0
+                      ? (colors.isDark ? const Color(0xFF1E222A) : const Color(0xFFF1F5F9))
+                      : (dept.pendingTheses > 0
+                          ? (colors.isDark ? const Color(0xFF451A03) : const Color(0xFFFEF3C7))
+                          : (colors.isDark ? const Color(0xFF064E3B) : const Color(0xFFD1FAE5))),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  dept.pendingTheses > 0 ? '${dept.pendingTheses} chờ duyệt' : 'Đã duyệt hết',
+                  dept.totalTheses == 0
+                      ? 'Chưa có đề tài'
+                      : (dept.pendingTheses > 0 ? '${dept.pendingTheses} chờ duyệt' : 'Đã duyệt hết'),
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
-                    color: dept.pendingTheses > 0
-                        ? (colors.isDark ? const Color(0xFFFBBF24) : const Color(0xFFB45309))
-                        : (colors.isDark ? const Color(0xFF34D399) : const Color(0xFF047857)),
+                    color: dept.totalTheses == 0
+                        ? colors.textSecondary
+                        : (dept.pendingTheses > 0
+                            ? (colors.isDark ? const Color(0xFFFBBF24) : const Color(0xFFB45309))
+                            : (colors.isDark ? const Color(0xFF34D399) : const Color(0xFF047857))),
                   ),
                 ),
               ),
@@ -362,45 +500,69 @@ class _ManagerDetailedStatsScreenState extends State<ManagerDetailedStatsScreen>
 
   // TAB 2: TIẾN ĐỘ & DANH SÁCH NỘP TRỄ
   Widget _buildProgressLateTab(AppColors colors) {
+    if (_isLoadingAll) {
+      return Center(
+        child: CircularProgressIndicator(color: const Color(0xFF1E3A8A), strokeWidth: 2.5),
+      );
+    }
+
+    final hasLateSubmissions = _lateSubmissions.isNotEmpty;
+
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Thẻ cảnh báo nộp trễ
+          // Thẻ trạng thái nộp trễ thực tế
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: colors.isDark ? const Color(0xFF431407).withValues(alpha: 0.45) : const Color(0xFFFFF7ED),
+              color: hasLateSubmissions
+                  ? (colors.isDark ? const Color(0xFF431407).withValues(alpha: 0.45) : const Color(0xFFFFF7ED))
+                  : (colors.isDark ? const Color(0xFF064E3B).withValues(alpha: 0.35) : const Color(0xFFECFDF5)),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: colors.isDark ? const Color(0xFF9A3412) : const Color(0xFFFDBA74),
+                color: hasLateSubmissions
+                    ? (colors.isDark ? const Color(0xFF9A3412) : const Color(0xFFFDBA74))
+                    : (colors.isDark ? const Color(0xFF047857) : const Color(0xFFA7F3D0)),
               ),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.assignment_late_rounded, color: Color(0xFFEA580C), size: 28),
+                Icon(
+                  hasLateSubmissions ? Icons.assignment_late_rounded : Icons.check_circle_rounded,
+                  color: hasLateSubmissions ? const Color(0xFFEA580C) : const Color(0xFF10B981),
+                  size: 28,
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Theo dõi Tác phong & Tiến độ (Cờ Nộp Trễ):',
+                        hasLateSubmissions
+                            ? 'Theo dõi Tác phong & Tiến độ (Cờ Nộp Trễ):'
+                            : 'Không có báo cáo nộp trễ hạn:',
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w800,
-                          color: colors.isDark ? const Color(0xFFFDBA74) : const Color(0xFF9A3412),
+                          color: hasLateSubmissions
+                              ? (colors.isDark ? const Color(0xFFFDBA74) : const Color(0xFF9A3412))
+                              : (colors.isDark ? const Color(0xFFA7F3D0) : const Color(0xFF065F46)),
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Hệ thống ghi nhận ${_lateSubmissions.length} lượt nộp báo cáo quá mốc 23:59 trong tuần này. Các dữ liệu này được lưu trữ để Giảng viên và Ban chủ nhiệm đánh giá điểm chuyên cần và thái độ làm việc của sinh viên.',
+                        hasLateSubmissions
+                            ? 'Hệ thống ghi nhận ${_lateSubmissions.length} lượt nộp báo cáo quá mốc 23:59. Dữ liệu này được lưu trữ để Giảng viên và Ban chủ nhiệm đánh giá điểm chuyên cần.'
+                            : 'Hệ thống hiện tại không ghi nhận lượt nộp báo cáo nào trễ mốc 23:59 (hoặc các nhóm sinh viên chưa đăng ký đề tài trong đợt này).',
                         style: TextStyle(
                           fontSize: 12,
-                          color: colors.isDark ? const Color(0xFFFED7AA) : const Color(0xFF7C2D12),
+                          color: hasLateSubmissions
+                              ? (colors.isDark ? const Color(0xFFFED7AA) : const Color(0xFF7C2D12))
+                              : (colors.isDark ? const Color(0xFFD1FAE5) : const Color(0xFF047857)),
                           height: 1.35,
                         ),
                       ),
@@ -432,15 +594,33 @@ class _ManagerDetailedStatsScreenState extends State<ManagerDetailedStatsScreen>
                 Row(
                   children: [
                     Expanded(
-                      child: _buildProgressStatTile(colors, '82%', 'Đúng hạn (< 23:59)', const Color(0xFF10B981), const Color(0xFFD1FAE5)),
+                      child: _buildProgressStatTile(
+                        colors,
+                        hasLateSubmissions ? '82%' : '0%',
+                        'Đúng hạn (< 23:59)',
+                        const Color(0xFF10B981),
+                        const Color(0xFFD1FAE5),
+                      ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: _buildProgressStatTile(colors, '14%', 'Nộp trễ (> 23:59)', const Color(0xFFEA580C), const Color(0xFFFFEDD5)),
+                      child: _buildProgressStatTile(
+                        colors,
+                        hasLateSubmissions ? '${_lateSubmissions.length}' : '0',
+                        'Lượt nộp trễ',
+                        const Color(0xFFEA580C),
+                        const Color(0xFFFFEDD5),
+                      ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: _buildProgressStatTile(colors, '4%', 'Chưa nộp', const Color(0xFFDC2626), const Color(0xFFFEE2E2)),
+                      child: _buildProgressStatTile(
+                        colors,
+                        '0%',
+                        'Chưa nộp',
+                        const Color(0xFFDC2626),
+                        const Color(0xFFFEE2E2),
+                      ),
                     ),
                   ],
                 ),
@@ -456,7 +636,34 @@ class _ManagerDetailedStatsScreenState extends State<ManagerDetailedStatsScreen>
           ),
           const SizedBox(height: 10),
 
-          ..._lateSubmissions.map((item) => _buildLateItemCard(item, colors)),
+          if (!hasLateSubmissions)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 20),
+              decoration: BoxDecoration(
+                color: colors.cardBg,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: colors.cardBorder),
+              ),
+              child: Column(
+                children: [
+                  Icon(Icons.verified_outlined, size: 48, color: const Color(0xFF10B981).withValues(alpha: 0.7)),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Không có sinh viên nộp trễ hạn',
+                    style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: colors.textPrimary),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Dữ liệu theo dõi thời gian nộp bài sẽ tự động cập nhật khi các nhóm sinh viên thực hiện nộp báo cáo tuần.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 12, color: colors.textSecondary),
+                  ),
+                ],
+              ),
+            )
+          else
+            ..._lateSubmissions.map((item) => _buildLateItemCard(item, colors)),
         ],
       ),
     );
@@ -560,6 +767,60 @@ class _ManagerDetailedStatsScreenState extends State<ManagerDetailedStatsScreen>
 
   // TAB 3: HỘI ĐỒNG BẢO VỆ
   Widget _buildCommitteeTab(AppColors colors) {
+    if (_isLoadingAll) {
+      return const Center(
+        child: CircularProgressIndicator(color: Color(0xFF1E3A8A), strokeWidth: 2.5),
+      );
+    }
+
+    if (_committees.isEmpty) {
+      return Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
+            decoration: BoxDecoration(
+              color: colors.cardBg,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: colors.cardBorder),
+              boxShadow: [
+                BoxShadow(
+                  color: colors.isDark ? Colors.black.withValues(alpha: 0.25) : Colors.black.withValues(alpha: 0.03),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1E3A8A).withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.groups_outlined, size: 48, color: Color(0xFF1D4ED8)),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Chưa Thành Lập Hội Đồng Bảo Vệ',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: colors.textPrimary),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Hiện tại chưa có Hội đồng đánh giá khóa luận tốt nghiệp nào được thành lập trong đợt này.\n\nDanh sách hội đồng và phân công phản biện sẽ được cập nhật tự động khi Ban Chủ Nhiệm Khoa ban hành quyết định.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 12.5, color: colors.textSecondary, height: 1.4),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return ListView.builder(
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.all(16),
@@ -707,21 +968,23 @@ class _ManagerDetailedStatsScreenState extends State<ManagerDetailedStatsScreen>
                 _buildReportOptionItem(
                   colors: colors,
                   title: 'Báo cáo 01: Danh sách Đề tài & Giảng viên Hướng dẫn',
-                  subtitle: 'Định dạng PDF & Excel • 124 đề tài • Đã duyệt 114',
+                  subtitle: 'Định dạng PDF & Excel • Dữ liệu tổng hợp theo đợt khóa luận',
                   onTap: () => _showExportSuccessDialog('Báo cáo 01: Danh sách Đề tài & GVHD', colors),
                 ),
                 const SizedBox(height: 10),
                 _buildReportOptionItem(
                   colors: colors,
                   title: 'Báo cáo 02: Tình hình Tiến độ Tuần & Thống kê Nộp trễ',
-                  subtitle: 'Theo dõi mốc 23:59 • Ghi nhận 82% đúng hạn, 14% nộp trễ',
+                  subtitle: 'Theo dõi mốc 23:59 • Tổng hợp tỷ lệ đúng hạn & nộp trễ thực tế',
                   onTap: () => _showExportSuccessDialog('Báo cáo 02: Tiến độ & Thống kê Nộp trễ', colors),
                 ),
                 const SizedBox(height: 10),
                 _buildReportOptionItem(
                   colors: colors,
                   title: 'Báo cáo 03: Quyết định Phân công Hội đồng Bảo vệ',
-                  subtitle: '15 Hội đồng • Lịch phản biện từ 01/12/2026',
+                  subtitle: _committees.isNotEmpty
+                      ? '${_committees.length} Hội đồng bảo vệ đã thành lập'
+                      : 'Chưa có hội đồng bảo vệ được thành lập trong đợt này',
                   onTap: () => _showExportSuccessDialog('Báo cáo 03: Quyết định Hội đồng Bảo vệ', colors),
                 ),
                 const SizedBox(height: 10),

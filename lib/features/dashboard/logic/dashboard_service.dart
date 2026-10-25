@@ -7,6 +7,7 @@ import '../../lecturer/topic/logic/lecturer_topic_service.dart';
 import '../../student/progress/logic/student_progress_service.dart';
 import '../../student/topic/logic/student_topic_service.dart';
 import '../model/dashboard_stats_models.dart';
+import '../../manager/model/manager_stats_model.dart';
 
 class DashboardService {
   static final DashboardService _instance = DashboardService._internal();
@@ -197,4 +198,173 @@ class DashboardService {
       return StudentDashboardStats();
     }
   }
+
+  /// 4. LẤY THỐNG KÊ THEO TỪNG BỘ MÔN (100% TỪ CSDL THẬT)
+  Future<List<DepartmentStat>> getDepartmentStats({int? periodId}) async {
+    // 5 Bộ môn chuẩn của Khoa CNTT - HUIT
+    final List<String> standardDepts = [
+      'Công nghệ Phần mềm',
+      'An toàn Thông tin',
+      'Hệ thống Thông tin',
+      'Khoa học Dữ liệu & TTNT',
+      'Công nghệ Số & Đa phương tiện',
+    ];
+
+    try {
+      final topics = await StudentTopicService().getTopics(periodId: periodId);
+
+      return standardDepts.map((deptName) {
+        // Lọc các đề tài thuộc bộ môn / chuyên ngành này
+        final deptTopics = topics.where((t) {
+          final m = t.major.toLowerCase();
+          final title = t.title.toLowerCase();
+          final code = t.topicCode.toLowerCase();
+
+          if (deptName.contains('Phần mềm')) {
+            return m.contains('phần mềm') || m.contains('pm') || m.contains('se') || code.contains('pm') || title.contains('phần mềm');
+          } else if (deptName.contains('An toàn')) {
+            return m.contains('an toàn') || m.contains('mạng') || m.contains('attt') || m.contains('is') || code.contains('at');
+          } else if (deptName.contains('Hệ thống')) {
+            return m.contains('hệ thống') || m.contains('httt') || m.contains('mis') || code.contains('ht');
+          } else if (deptName.contains('Dữ liệu') || deptName.contains('TTNT')) {
+            return m.contains('dữ liệu') || m.contains('trí tuệ') || m.contains('ai') || m.contains('khdl') || code.contains('dl');
+          } else {
+            return m.contains('số') || m.contains('đa phương tiện') || m.contains('multimedia') || code.contains('cns');
+          }
+        }).toList();
+
+        final totalTheses = deptTopics.length;
+        final approvedTheses = deptTopics.where((t) {
+          final s = t.status.toLowerCase();
+          return s == 'approved' || s == 'open' || s == 'available' || s == 'registered';
+        }).length;
+        final pendingTheses = deptTopics.where((t) {
+          final s = t.status.toLowerCase();
+          return s.contains('pending') || s.contains('chờ');
+        }).length;
+
+        final studentCount = deptTopics.fold<int>(0, (sum, t) => sum + t.currentStudents);
+        final lecturerCount = deptTopics
+            .map((t) => t.lecturerName.trim())
+            .where((name) => name.isNotEmpty && !name.toLowerCase().contains('chưa'))
+            .toSet()
+            .length;
+
+        return DepartmentStat(
+          departmentName: deptName,
+          totalTheses: totalTheses,
+          approvedTheses: approvedTheses,
+          pendingTheses: pendingTheses,
+          studentCount: studentCount,
+          lecturerCount: lecturerCount,
+        );
+      }).toList();
+    } catch (e) {
+      debugPrint('[DashboardService] getDepartmentStats error: $e');
+      return standardDepts
+          .map((deptName) => DepartmentStat(
+                departmentName: deptName,
+                totalTheses: 0,
+                approvedTheses: 0,
+                pendingTheses: 0,
+                studentCount: 0,
+                lecturerCount: 0,
+              ))
+          .toList();
+    }
+  }
+
+  /// 5. LẤY DANH SÁCH BÁO CÁO NỘP TRỄ (100% TỪ CSDL THẬT)
+  Future<List<LateSubmissionItem>> getLateSubmissions({int? periodId}) async {
+    try {
+      final headers = await _getHeaders();
+      final url = '${ApiEndpoints.baseUrl}/ProgressReport/lecturer/theses';
+      final res = await http.get(Uri.parse(url), headers: headers).timeout(const Duration(seconds: 4));
+
+      if (res.statusCode == 200) {
+        final decoded = jsonDecode(utf8.decode(res.bodyBytes));
+        if (decoded is List) {
+          List<LateSubmissionItem> lateItems = [];
+          for (final item in decoded) {
+            if (item is Map<String, dynamic>) {
+              final groupName = item['groupName'] ?? item['tenNhom'] ?? 'Nhóm SV';
+              final plans = item['weeklyPlans'] ?? item['plans'] ?? [];
+              if (plans is List) {
+                for (final p in plans) {
+                  if (p is Map<String, dynamic>) {
+                    final isLate = p['isLate'] == true;
+                    final submittedAtStr = p['submittedAt'] ?? p['ngayNop'];
+                    final deadlineStr = p['deadline'] ?? p['hanNop'];
+
+                    if (isLate || _isAfterDeadline(submittedAtStr, deadlineStr)) {
+                      lateItems.add(LateSubmissionItem(
+                        studentCode: p['studentCode'] ?? p['maSinhVien'] ?? '---',
+                        studentName: p['studentName'] ?? p['hoTen'] ?? 'Sinh viên',
+                        groupName: groupName.toString(),
+                        taskName: p['title'] ?? p['tieuDe'] ?? 'Báo cáo tuần',
+                        deadlineStr: deadlineStr != null ? deadlineStr.toString().replaceAll('T', ' ').substring(0, 16) : '23:59',
+                        submittedTimeStr: submittedAtStr != null ? submittedAtStr.toString().replaceAll('T', ' ').substring(0, 16) : 'Quá hạn',
+                        lateHours: p['lateHours'] ?? 1,
+                        reason: p['reason'] ?? p['lyDo'] ?? '',
+                      ));
+                    }
+                  }
+                }
+              }
+            }
+          }
+          return lateItems;
+        }
+      }
+    } catch (e) {
+      debugPrint('[DashboardService] getLateSubmissions error: $e');
+    }
+    // Trả về danh sách rỗng thực tế nếu chưa có ai nộp trễ hoặc chưa tạo nhóm/chọn đề tài
+    return [];
+  }
+
+  bool _isAfterDeadline(dynamic submittedAt, dynamic deadline) {
+    if (submittedAt == null || deadline == null) return false;
+    try {
+      final s = DateTime.parse(submittedAt.toString());
+      final d = DateTime.parse(deadline.toString());
+      return s.isAfter(d);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// 6. LẤY HỘI ĐỒNG BẢO VỆ (100% TỪ CSDL THẬT)
+  Future<List<CommitteeStat>> getDefenseCommittees({int? periodId}) async {
+    try {
+      final headers = await _getHeaders();
+      String url = '${ApiEndpoints.baseUrl}/DefenseCommittees';
+      if (periodId != null) url += '?periodId=$periodId';
+
+      final res = await http.get(Uri.parse(url), headers: headers).timeout(const Duration(seconds: 4));
+      if (res.statusCode == 200) {
+        final decoded = jsonDecode(utf8.decode(res.bodyBytes));
+        if (decoded is List) {
+          return decoded.map((c) {
+            final map = c as Map<String, dynamic>;
+            return CommitteeStat(
+              committeeCode: map['committeeCode'] ?? map['code'] ?? 'HĐ-${map['id'] ?? ""}',
+              name: map['name'] ?? map['committeeName'] ?? 'Hội đồng Bảo vệ',
+              president: map['president'] ?? map['presidentName'] ?? map['chuTich'] ?? 'Chưa chỉ định',
+              secretary: map['secretary'] ?? map['secretaryName'] ?? map['thuKy'] ?? 'Chưa chỉ định',
+              reviewer: map['reviewer'] ?? map['reviewerName'] ?? map['phanBien'] ?? 'Chưa chỉ định',
+              assignedGroups: map['assignedGroups'] ?? map['thesesCount'] ?? map['groupCount'] ?? 0,
+              room: map['room'] ?? map['phong'] ?? 'Chưa xếp phòng',
+              defenseDate: map['defenseDate'] != null ? map['defenseDate'].toString().split('T')[0] : 'Chưa xếp lịch',
+            );
+          }).toList();
+        }
+      }
+    } catch (e) {
+      debugPrint('[DashboardService] getDefenseCommittees error: $e');
+    }
+    // Trả về rỗng nếu CSDL chưa thành lập hội đồng
+    return [];
+  }
 }
+

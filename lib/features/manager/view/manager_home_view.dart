@@ -3,7 +3,6 @@ import '../../../core/theme/app_theme.dart';
 import '../../auth/model/user_model.dart';
 import 'manager_detailed_stats_screen.dart';
 import '../../notification/view/notification_bell_button.dart';
-import '../../../core/widgets/donut_stat_card.dart';
 import '../../dashboard/logic/dashboard_service.dart';
 import '../../dashboard/model/dashboard_stats_models.dart';
 
@@ -46,17 +45,29 @@ class _ManagerHomeViewState extends State<ManagerHomeView> {
     }
   }
 
+  void _navigateToDashboard([int initialTab = 0]) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ManagerDetailedStatsScreen(
+          user: widget.user,
+          initialTabIndex: initialTab,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
     final user = widget.user;
+    final stats = _safeStats;
 
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 1. HEADER GRADIENT DÀNH CHO QUẢN LÝ / BAN CHỦ NHIỆM
+          // 1. HEADER GRADIENT DÀNH CHO QUẢN LÝ / BAN CHỦ NHIỆM / TRƯỞNG BỘ MÔN
           Container(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
             decoration: const BoxDecoration(
@@ -78,7 +89,7 @@ class _ManagerHomeViewState extends State<ManagerHomeView> {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     border: Border.all(color: Colors.white, width: 2),
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withValues(alpha: 0.2),
                     image: user.avatarUrl != null && user.avatarUrl!.isNotEmpty
                         ? DecorationImage(image: NetworkImage(user.avatarUrl!), fit: BoxFit.cover)
                         : null,
@@ -102,9 +113,9 @@ class _ManagerHomeViewState extends State<ManagerHomeView> {
                       ),
                       const SizedBox(height: 3),
                       Text(
-                        'Ban Chủ Nhiệm Khoa CNTT • HUIT',
+                        'Ban Chủ Nhiệm / Trưởng Bộ Môn • HUIT',
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.9),
+                          color: Colors.white.withValues(alpha: 0.9),
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
                         ),
@@ -113,17 +124,11 @@ class _ManagerHomeViewState extends State<ManagerHomeView> {
                   ),
                 ),
                 InkWell(
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => ManagerDetailedStatsScreen(user: user),
-                      ),
-                    );
-                  },
+                  onTap: () => _navigateToDashboard(0),
                   child: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.18),
+                      color: Colors.white.withValues(alpha: 0.18),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(Icons.analytics_outlined, color: Colors.white, size: 24),
@@ -138,138 +143,113 @@ class _ManagerHomeViewState extends State<ManagerHomeView> {
 
           const SizedBox(height: 18),
 
-          // 2. BIỂU ĐỒ 3 VÒNG TRÒN DONUT THỐNG KÊ QUY MÔ TOÀN KHOA (CHUẨN THIẾT KẾ DONUT)
+          // 2. MỤC "DASHBOARD" NỔI BẬT ĐỂ VÀO XEM CHI TIẾT (KHÔNG SHOW TRÀN LAN RA NGOÀI GIAO DIỆN CHÍNH NỮA)
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: _isLoading
-                ? Container(
-                    height: 180,
-                    decoration: BoxDecoration(
-                      color: colors.cardBg,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: colors.cardBorder),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(22),
+              onTap: () => _navigateToDashboard(0),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF1E3A8A), Color(0xFF2563EB)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(22),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF1D4ED8).withValues(alpha: 0.35),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
                     ),
-                    child: const Center(
-                      child: CircularProgressIndicator(color: Color(0xFF1D4ED8), strokeWidth: 2.5),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 52,
+                      height: 52,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
+                      ),
+                      child: const Icon(
+                        Icons.insights_rounded,
+                        color: Colors.white,
+                        size: 28,
+                      ),
                     ),
-                  )
-                : Builder(
-                    builder: (context) {
-                      final stats = _stats ?? AdminDashboardStats();
-                      return DonutStatCard(
-                        title: 'Tình hình Đề tài & Hướng dẫn Toàn Khoa',
-                        filterPillText: stats.periodName.isNotEmpty ? stats.periodName : 'HK1 (2026-2027)',
-                        topSummaryWidget: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: colors.isDark ? const Color(0xFF1E293B) : const Color(0xFFEFF6FF),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: colors.isDark ? const Color(0xFF334155) : const Color(0xFFBFDBFE)),
-                          ),
-                          child: Row(
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
                             children: [
-                              const Icon(Icons.auto_stories_rounded, size: 20, color: Color(0xFF1D4ED8)),
+                              const Text(
+                                'DASHBOARD',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w900,
+                                  color: Colors.white,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
                               const SizedBox(width: 8),
-                              Expanded(
-                                child: RichText(
-                                  text: TextSpan(
-                                    style: TextStyle(fontSize: 13, color: colors.textPrimary),
-                                    children: [
-                                      const TextSpan(text: 'Tổng số đề tài toàn khoa: '),
-                                      TextSpan(
-                                        text: '${stats.totalTheses} đề tài',
-                                        style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF1D4ED8), fontSize: 14),
-                                      ),
-                                    ],
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF10B981),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Text(
+                                  'Xem chi tiết',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.white,
                                   ),
                                 ),
                               ),
                             ],
                           ),
-                        ),
-                        items: [
-                          DonutStatItem(
-                            value: stats.registeredTheses,
-                            label: 'Được đăng ký',
-                            progressPercent: stats.totalTheses > 0 ? stats.registeredTheses / stats.totalTheses : 0.0,
-                            color: const Color(0xFF2563EB),
-                          ),
-                          DonutStatItem(
-                            value: stats.supervisedTheses,
-                            label: 'Được hướng dẫn',
-                            progressPercent: stats.totalTheses > 0 ? stats.supervisedTheses / stats.totalTheses : 0.0,
-                            color: const Color(0xFF10B981),
-                          ),
-                          DonutStatItem(
-                            value: stats.activeLecturersCount,
-                            label: 'GVHD trong kỳ',
-                            progressPercent: stats.activeLecturersCount > 0 ? 0.8 : 0.0,
-                            color: const Color(0xFF8B5CF6),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Biểu đồ Donut, tỷ lệ nghiệp vụ, 5 bộ môn & hội đồng',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.white.withValues(alpha: 0.88),
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ],
-                      );
-                    },
-                  ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // NÚT TRUY CẬP SỐ LIỆU TỔNG HỢP CHI TIẾT
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Container(
-              width: double.infinity,
-              height: 50,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF1E3A8A), Color(0xFF2563EB)],
-                ),
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF1D4ED8).withValues(alpha: 0.35),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.transparent,
-                  shadowColor: Colors.transparent,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                ),
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => ManagerDetailedStatsScreen(user: user),
+                      ),
                     ),
-                  );
-                },
-                icon: const Icon(Icons.bar_chart_rounded, color: Colors.white, size: 22),
-                label: const Text(
-                  'XEM SỐ LIỆU TỔNG HỢP CHI TIẾT',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                    letterSpacing: 0.3,
-                  ),
+                    const Icon(
+                      Icons.arrow_forward_ios_rounded,
+                      color: Colors.white,
+                      size: 16,
+                    ),
+                  ],
                 ),
               ),
             ),
           ),
 
-          const SizedBox(height: 20),
+          const SizedBox(height: 18),
 
-          // 3. TIẾN ĐỘ THỰC HIỆN ĐỢT KHÓA LUẬN
+          // 3. KHỐI CHỨC NĂNG NGHIỆP VỤ QUẢN LÝ
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Container(
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
                 color: colors.cardBg,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(24),
                 border: Border.all(color: colors.cardBorder, width: 1.2),
                 boxShadow: [
                   BoxShadow(
@@ -284,85 +264,240 @@ class _ManagerHomeViewState extends State<ManagerHomeView> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Tỷ Lệ Nghiệp Vụ Khóa Luận (HUIT)',
-                    style: TextStyle(
-                      fontSize: 15.5,
-                      fontWeight: FontWeight.w800,
-                      color: colors.sectionTitle,
-                    ),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1E3A8A).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(Icons.grid_view_rounded, size: 16, color: Color(0xFF1D4ED8)),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Danh Mục Quản Lý & Báo Cáo',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: colors.textPrimary,
+                        ),
+                      ),
+                      const Spacer(),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: colors.isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          stats.periodName.isNotEmpty ? stats.periodName : 'HK1 (2026-2027)',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: colors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 14),
-                  _buildProgressRow(
-                    colors,
-                    'Tỷ lệ đề tài được SV đăng ký',
-                    _safeStats.totalTheses > 0 ? (_safeStats.registeredTheses / _safeStats.totalTheses) : 0.0,
-                    _safeStats.totalTheses > 0
-                        ? '${((_safeStats.registeredTheses / _safeStats.totalTheses) * 100).toStringAsFixed(1)}% (${_safeStats.registeredTheses}/${_safeStats.totalTheses})'
-                        : '0%',
-                    const Color(0xFF10B981),
-                  ),
-                  const SizedBox(height: 12),
-                  _buildProgressRow(
-                    colors,
-                    'Tỷ lệ đề tài đã có Giảng viên hướng dẫn',
-                    _safeStats.totalTheses > 0 ? (_safeStats.supervisedTheses / _safeStats.totalTheses) : 0.0,
-                    _safeStats.totalTheses > 0
-                        ? '${((_safeStats.supervisedTheses / _safeStats.totalTheses) * 100).toStringAsFixed(1)}% (${_safeStats.supervisedTheses}/${_safeStats.totalTheses})'
-                        : '0%',
-                    const Color(0xFF0284C7),
-                  ),
-                  const SizedBox(height: 12),
-                  _buildProgressRow(
-                    colors,
-                    'Đội ngũ Giảng viên hướng dẫn tham gia',
-                    _safeStats.activeLecturersCount > 0 ? 1.0 : 0.0,
-                    '${_safeStats.activeLecturersCount} Giảng viên',
-                    const Color(0xFF8B5CF6),
+
+                  const SizedBox(height: 18),
+
+                  // HÀNG CÁC MỤC NGHIỆP VỤ SQUIRCLE
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // 1. Dashboard
+                      Expanded(
+                        child: _buildSquircleItem(
+                          context: context,
+                          icon: Icons.insights_rounded,
+                          title: 'Dashboard',
+                          color: const Color(0xFF1D4ED8),
+                          onTap: () => _navigateToDashboard(0),
+                        ),
+                      ),
+
+                      // 2. Bộ môn & Đề tài
+                      Expanded(
+                        child: _buildSquircleItem(
+                          context: context,
+                          icon: Icons.apartment_rounded,
+                          title: 'Bộ Môn',
+                          color: const Color(0xFF0F766E),
+                          onTap: () => _navigateToDashboard(0),
+                        ),
+                      ),
+
+                      // 3. Tiến độ & Trễ hạn
+                      Expanded(
+                        child: _buildSquircleItem(
+                          context: context,
+                          icon: Icons.warning_amber_rounded,
+                          title: 'Nộp Trễ',
+                          color: const Color(0xFFD97706),
+                          onTap: () => _navigateToDashboard(1),
+                        ),
+                      ),
+
+                      // 4. Hội đồng bảo vệ
+                      Expanded(
+                        child: _buildSquircleItem(
+                          context: context,
+                          icon: Icons.groups_rounded,
+                          title: 'Hội Đồng',
+                          color: const Color(0xFF7C3AED),
+                          onTap: () => _navigateToDashboard(2),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
           ),
+
+          const SizedBox(height: 16),
+
+          // 4. THẺ TÓM TẮT NHANH QUY MÔ TOÀN KHOA
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: colors.cardBg,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: colors.cardBorder),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Tóm Tắt Chỉ Số Toàn Khoa',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: colors.sectionTitle,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildMetricTile(
+                          'Tổng đề tài',
+                          _isLoading ? '...' : '${stats.totalTheses}',
+                          const Color(0xFF1D4ED8),
+                          colors,
+                        ),
+                      ),
+                      Container(width: 1, height: 36, color: colors.cardBorder),
+                      Expanded(
+                        child: _buildMetricTile(
+                          'Đã đăng ký',
+                          _isLoading ? '...' : '${stats.registeredTheses}',
+                          const Color(0xFF10B981),
+                          colors,
+                        ),
+                      ),
+                      Container(width: 1, height: 36, color: colors.cardBorder),
+                      Expanded(
+                        child: _buildMetricTile(
+                          'GVHD trong kỳ',
+                          _isLoading ? '...' : '${stats.activeLecturersCount}',
+                          const Color(0xFF8B5CF6),
+                          colors,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+
           const SizedBox(height: 100),
         ],
       ),
     );
   }
 
-  Widget _buildProgressRow(AppColors colors, String title, double value, String label, Color color) {
+  Widget _buildMetricTile(String title, String value, Color color, AppColors colors) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(
-              child: Text(
-                title,
-                style: TextStyle(
-                  fontSize: 12.5,
-                  color: colors.textSecondary,
-                  fontWeight: FontWeight.w600,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Text(label, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: color)),
-          ],
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w900,
+            color: color,
+          ),
         ),
-        const SizedBox(height: 8),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: LinearProgressIndicator(
-            value: value.clamp(0.0, 1.0),
-            minHeight: 8,
-            backgroundColor: colors.isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9),
-            valueColor: AlwaysStoppedAnimation<Color>(color),
+        const SizedBox(height: 3),
+        Text(
+          title,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 11.5,
+            fontWeight: FontWeight.w500,
+            color: colors.textSecondary,
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildSquircleItem({
+    required BuildContext context,
+    required IconData icon,
+    required String title,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    final colors = AppColors.of(context);
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(18),
+                boxShadow: [
+                  BoxShadow(
+                    color: color.withValues(alpha: 0.3),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Center(
+                child: Icon(icon, color: Colors.white, size: 26),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: colors.textPrimary,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
