@@ -296,7 +296,7 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
                             const SizedBox(height: 12),
                             Text(
                               (_thesisProgress?.message != null && _thesisProgress!.message!.isNotEmpty)
-                                  ? _thesisProgress!.message!
+                                  ? fixEncoding(_thesisProgress!.message!)
                                   : 'Bạn chưa đăng ký đề tài hoặc đề tài đang chờ phê duyệt.\nKế hoạch báo cáo tuần sẽ tự động hiển thị khi đề tài được duyệt chính thức.',
                               textAlign: TextAlign.center,
                               style: TextStyle(

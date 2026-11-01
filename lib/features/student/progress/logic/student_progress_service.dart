@@ -43,7 +43,7 @@ class StudentProgressService {
           final errDecoded = jsonDecode(utf8.decode(res.bodyBytes));
           return StudentThesisProgressModel(
             hasThesis: false,
-            message: errDecoded['message'] ?? 'Chưa có thông tin đề tài được duyệt.',
+            message: fixEncoding(errDecoded['message']?.toString()),
           );
         } catch (_) {
           return StudentThesisProgressModel(

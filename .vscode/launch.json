@@ -1,0 +1,26 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Mobile App (Chrome 8080)",
+      "request": "launch",
+      "type": "dart",
+      "args": [
+        "-d",
+        "chrome",
+        "--web-port",
+        "8080"
+      ]
+    },
+    {
+      "name": "Mobile App (Windows Desktop)",
+      "request": "launch",
+      "type": "dart",
+      "args": [
+        "-d",
+        "windows"
+      ]
+    }
+  ]
+}
+

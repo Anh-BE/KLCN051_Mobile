@@ -3,11 +3,14 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../../../core/constants/api_endpoints.dart';
 import '../../../core/utils/storage_service.dart';
+import '../../student/group/logic/student_group_service.dart';
 import '../../lecturer/topic/logic/lecturer_topic_service.dart';
 import '../../student/progress/logic/student_progress_service.dart';
 import '../../student/topic/logic/student_topic_service.dart';
+import '../../student/topic/model/thesis_topic_model.dart';
 import '../model/dashboard_stats_models.dart';
 import '../../manager/model/manager_stats_model.dart';
+import '../../student/model/registration_period_model.dart';
 
 class DashboardService {
   static final DashboardService _instance = DashboardService._internal();
@@ -21,6 +24,45 @@ class DashboardService {
       'Accept': 'application/json',
       if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
     };
+  }
+
+  int _parseInt(dynamic val, [int fallback = 0]) {
+    if (val == null) return fallback;
+    if (val is int) return val;
+    if (val is num) return val.toInt();
+    return int.tryParse(val.toString()) ?? fallback;
+  }
+
+  String _formatDateSafe(dynamic value, String fallback) {
+    if (value == null) return fallback;
+    final str = value.toString().replaceAll('T', ' ').trim();
+    if (str.isEmpty) return fallback;
+    return str.length >= 16 ? str.substring(0, 16) : str;
+  }
+
+  /// Lấy toàn bộ đề tài toàn khoa từ backend (không lọc bỏ đề tài chờ duyệt)
+  Future<List<ThesisTopicModel>> _getRawTheses({int? periodId}) async {
+    try {
+      final headers = await _getHeaders();
+      final pId = periodId ?? await StudentGroupService().getCurrentPeriodId();
+      String url = '${ApiEndpoints.baseUrl}${ApiEndpoints.theses}';
+      if (pId > 0) {
+        url += '?periodId=$pId';
+      }
+
+      final res = await http.get(Uri.parse(url), headers: headers).timeout(const Duration(seconds: 4));
+      if (res.statusCode == 200) {
+        final decoded = jsonDecode(utf8.decode(res.bodyBytes));
+        if (decoded is List) {
+          return decoded
+              .map((item) => ThesisTopicModel.fromJson(item as Map<String, dynamic>))
+              .toList();
+        }
+      }
+    } catch (_) {}
+
+    // Fallback qua StudentTopicService nếu không gọi được trực tiếp
+    return StudentTopicService().getTopics(periodId: periodId);
   }
 
   /// 1. LẤY SỐ LIỆU CHO GIẢNG VIÊN HƯỚNG DẪN (100% TỪ CSDL THẬT)
@@ -88,7 +130,7 @@ class DashboardService {
 
     // 2. Tự động tổng hợp từ danh sách đề tài toàn khoa thật qua GET /api/PhanCongDeTai/Theses
     try {
-      final topics = await StudentTopicService().getTopics();
+      final topics = await _getRawTheses(periodId: periodId);
       final totalTheses = topics.length;
       final registeredTheses = topics
           .where((t) => t.registeredGroupId != null && t.registeredGroupId!.isNotEmpty && t.registeredGroupId != '0')
@@ -107,7 +149,7 @@ class DashboardService {
         registeredTheses: registeredTheses,
         supervisedTheses: supervisedTheses,
         activeLecturersCount: activeLecturersCount,
-        periodName: 'HK1 (2026-2027)',
+        periodName: topics.isNotEmpty ? topics.first.periodName : 'HK1 (2026-2027)',
       );
     } catch (e) {
       debugPrint('[DashboardService] getAdminStats error: $e');
@@ -211,7 +253,7 @@ class DashboardService {
     ];
 
     try {
-      final topics = await StudentTopicService().getTopics(periodId: periodId);
+      final topics = await _getRawTheses(periodId: periodId);
 
       return standardDepts.map((deptName) {
         // Lọc các đề tài thuộc bộ môn / chuyên ngành này
@@ -240,7 +282,7 @@ class DashboardService {
         }).length;
         final pendingTheses = deptTopics.where((t) {
           final s = t.status.toLowerCase();
-          return s.contains('pending') || s.contains('chờ');
+          return s.contains('pending') || s.contains('chờ') || s.contains('wait');
         }).length;
 
         final studentCount = deptTopics.fold<int>(0, (sum, t) => sum + t.currentStudents);
@@ -278,7 +320,10 @@ class DashboardService {
   Future<List<LateSubmissionItem>> getLateSubmissions({int? periodId}) async {
     try {
       final headers = await _getHeaders();
-      final url = '${ApiEndpoints.baseUrl}/ProgressReport/lecturer/theses';
+      String url = '${ApiEndpoints.baseUrl}/ProgressReport/lecturer/theses';
+      if (periodId != null && periodId > 0) {
+        url += '?periodId=$periodId';
+      }
       final res = await http.get(Uri.parse(url), headers: headers).timeout(const Duration(seconds: 4));
 
       if (res.statusCode == 200) {
@@ -293,19 +338,19 @@ class DashboardService {
                 for (final p in plans) {
                   if (p is Map<String, dynamic>) {
                     final isLate = p['isLate'] == true;
-                    final submittedAtStr = p['submittedAt'] ?? p['ngayNop'];
-                    final deadlineStr = p['deadline'] ?? p['hanNop'];
+                    final submittedAtVal = p['submittedAt'] ?? p['ngayNop'];
+                    final deadlineVal = p['deadline'] ?? p['hanNop'];
 
-                    if (isLate || _isAfterDeadline(submittedAtStr, deadlineStr)) {
+                    if (isLate || _isAfterDeadline(submittedAtVal, deadlineVal)) {
                       lateItems.add(LateSubmissionItem(
-                        studentCode: p['studentCode'] ?? p['maSinhVien'] ?? '---',
-                        studentName: p['studentName'] ?? p['hoTen'] ?? 'Sinh viên',
+                        studentCode: (p['studentCode'] ?? p['maSinhVien'] ?? '---').toString(),
+                        studentName: (p['studentName'] ?? p['hoTen'] ?? 'Sinh viên').toString(),
                         groupName: groupName.toString(),
-                        taskName: p['title'] ?? p['tieuDe'] ?? 'Báo cáo tuần',
-                        deadlineStr: deadlineStr != null ? deadlineStr.toString().replaceAll('T', ' ').substring(0, 16) : '23:59',
-                        submittedTimeStr: submittedAtStr != null ? submittedAtStr.toString().replaceAll('T', ' ').substring(0, 16) : 'Quá hạn',
-                        lateHours: p['lateHours'] ?? 1,
-                        reason: p['reason'] ?? p['lyDo'] ?? '',
+                        taskName: (p['title'] ?? p['tieuDe'] ?? 'Báo cáo tuần').toString(),
+                        deadlineStr: _formatDateSafe(deadlineVal, '23:59'),
+                        submittedTimeStr: _formatDateSafe(submittedAtVal, 'Quá hạn'),
+                        lateHours: _parseInt(p['lateHours'], 1),
+                        reason: (p['reason'] ?? p['lyDo'] ?? '').toString(),
                       ));
                     }
                   }
@@ -319,7 +364,6 @@ class DashboardService {
     } catch (e) {
       debugPrint('[DashboardService] getLateSubmissions error: $e');
     }
-    // Trả về danh sách rỗng thực tế nếu chưa có ai nộp trễ hoặc chưa tạo nhóm/chọn đề tài
     return [];
   }
 
@@ -347,15 +391,22 @@ class DashboardService {
         if (decoded is List) {
           return decoded.map((c) {
             final map = c as Map<String, dynamic>;
+            final rawDefenseDate = map['defenseDate'];
+            String defenseDateStr = 'Chưa xếp lịch';
+            if (rawDefenseDate != null) {
+              final dParts = rawDefenseDate.toString().split('T');
+              defenseDateStr = dParts.isNotEmpty ? dParts[0] : rawDefenseDate.toString();
+            }
+
             return CommitteeStat(
-              committeeCode: map['committeeCode'] ?? map['code'] ?? 'HĐ-${map['id'] ?? ""}',
-              name: map['name'] ?? map['committeeName'] ?? 'Hội đồng Bảo vệ',
-              president: map['president'] ?? map['presidentName'] ?? map['chuTich'] ?? 'Chưa chỉ định',
-              secretary: map['secretary'] ?? map['secretaryName'] ?? map['thuKy'] ?? 'Chưa chỉ định',
-              reviewer: map['reviewer'] ?? map['reviewerName'] ?? map['phanBien'] ?? 'Chưa chỉ định',
-              assignedGroups: map['assignedGroups'] ?? map['thesesCount'] ?? map['groupCount'] ?? 0,
-              room: map['room'] ?? map['phong'] ?? 'Chưa xếp phòng',
-              defenseDate: map['defenseDate'] != null ? map['defenseDate'].toString().split('T')[0] : 'Chưa xếp lịch',
+              committeeCode: (map['committeeCode'] ?? map['code'] ?? 'HĐ-${map['id'] ?? ""}').toString(),
+              name: (map['name'] ?? map['committeeName'] ?? 'Hội đồng Bảo vệ').toString(),
+              president: (map['president'] ?? map['presidentName'] ?? map['chuTich'] ?? 'Chưa chỉ định').toString(),
+              secretary: (map['secretary'] ?? map['secretaryName'] ?? map['thuKy'] ?? 'Chưa chỉ định').toString(),
+              reviewer: (map['reviewer'] ?? map['reviewerName'] ?? map['phanBien'] ?? 'Chưa chỉ định').toString(),
+              assignedGroups: _parseInt(map['assignedGroups'] ?? map['thesesCount'] ?? map['groupCount'], 0),
+              room: (map['room'] ?? map['phong'] ?? 'Chưa xếp phòng').toString(),
+              defenseDate: defenseDateStr,
             );
           }).toList();
         }
@@ -363,8 +414,29 @@ class DashboardService {
     } catch (e) {
       debugPrint('[DashboardService] getDefenseCommittees error: $e');
     }
-    // Trả về rỗng nếu CSDL chưa thành lập hội đồng
+    return [];
+  }
+
+  /// 7. LẤY TẤT CẢ CÁC ĐỢT KHÓA LUẬN THẬT TỪ CSDL (GET /api/RegistrationPeriods)
+  Future<List<RegistrationPeriodModel>> getAllPeriods() async {
+    try {
+      final headers = await _getHeaders();
+      final url = Uri.parse('${ApiEndpoints.baseUrl}/RegistrationPeriods');
+      final res = await http.get(url, headers: headers).timeout(const Duration(seconds: 5));
+      if (res.statusCode == 200) {
+        final dynamic raw = jsonDecode(utf8.decode(res.bodyBytes));
+        if (raw is List) {
+          final list = raw
+              .where((item) => item != null && item is Map)
+              .map((item) => RegistrationPeriodModel.fromJson(Map<String, dynamic>.from(item as Map)))
+              .toList();
+          list.sort((a, b) => b.periodId.compareTo(a.periodId));
+          return list;
+        }
+      }
+    } catch (e) {
+      debugPrint('[DashboardService] getAllPeriods error: $e');
+    }
     return [];
   }
 }
-

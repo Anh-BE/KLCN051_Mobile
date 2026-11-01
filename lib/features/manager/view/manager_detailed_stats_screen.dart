@@ -5,6 +5,11 @@ import '../../auth/model/user_model.dart';
 import '../../dashboard/logic/dashboard_service.dart';
 import '../../dashboard/model/dashboard_stats_models.dart';
 import '../model/manager_stats_model.dart';
+import '../logic/report_export_service.dart';
+import 'widgets/report_export_bottom_sheet.dart';
+import '../../../core/widgets/app_toast.dart';
+import '../../student/model/registration_period_model.dart';
+import '../../student/view/widgets/period_selection_dialog.dart';
 
 class ManagerDetailedStatsScreen extends StatefulWidget {
   final UserModel user;
@@ -31,6 +36,8 @@ class _ManagerDetailedStatsScreenState extends State<ManagerDetailedStatsScreen>
   List<DepartmentStat> _deptStats = [];
   List<LateSubmissionItem> _lateSubmissions = [];
   List<CommitteeStat> _committees = [];
+  List<RegistrationPeriodModel> _periods = [];
+  RegistrationPeriodModel? _currentPeriod;
 
   @override
   void initState() {
@@ -43,7 +50,7 @@ class _ManagerDetailedStatsScreenState extends State<ManagerDetailedStatsScreen>
     _loadAllRealData();
   }
 
-  Future<void> _loadAllRealData() async {
+  Future<void> _loadAllRealData({int? targetPeriodId}) async {
     if (!mounted) return;
     setState(() {
       _isLoadingStats = true;
@@ -51,11 +58,21 @@ class _ManagerDetailedStatsScreenState extends State<ManagerDetailedStatsScreen>
     });
 
     try {
+      if (_periods.isEmpty) {
+        final allPeriods = await _dashboardService.getAllPeriods();
+        if (allPeriods.isNotEmpty) {
+          _periods = allPeriods;
+          _currentPeriod = allPeriods.first;
+        }
+      }
+
+      final activePeriodId = targetPeriodId ?? _currentPeriod?.periodId;
+
       final results = await Future.wait([
-        _dashboardService.getAdminStats(),
-        _dashboardService.getDepartmentStats(),
-        _dashboardService.getLateSubmissions(),
-        _dashboardService.getDefenseCommittees(),
+        _dashboardService.getAdminStats(periodId: activePeriodId),
+        _dashboardService.getDepartmentStats(periodId: activePeriodId),
+        _dashboardService.getLateSubmissions(periodId: activePeriodId),
+        _dashboardService.getDefenseCommittees(periodId: activePeriodId),
       ]);
 
       if (mounted) {
@@ -78,6 +95,22 @@ class _ManagerDetailedStatsScreenState extends State<ManagerDetailedStatsScreen>
     }
   }
 
+  void _openPeriodSelector() {
+    if (_periods.isEmpty) return;
+    PeriodSelectionDialog.show(
+      context: context,
+      periods: _periods,
+      canCancel: true,
+      currentSelectedPeriodId: _currentPeriod?.periodId,
+      onPeriodSelected: (p) async {
+        setState(() {
+          _currentPeriod = p;
+        });
+        await _loadAllRealData(targetPeriodId: p.periodId);
+      },
+    );
+  }
+
   @override
   void dispose() {
     _tabController.dispose();
@@ -97,7 +130,7 @@ class _ManagerDetailedStatsScreenState extends State<ManagerDetailedStatsScreen>
           icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Column(
+        title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
@@ -110,12 +143,18 @@ class _ManagerDetailedStatsScreenState extends State<ManagerDetailedStatsScreen>
               ),
             ),
             Text(
-              'Ban Chủ Nhiệm / Trưởng Bộ Môn • HUIT',
+              _currentPeriod?.periodName ?? 'Ban Chủ Nhiệm / Trưởng Bộ Môn • HUIT',
               style: TextStyle(fontSize: 11, color: Colors.white70, fontWeight: FontWeight.w500),
             ),
           ],
         ),
         actions: [
+          if (_periods.length >= 2)
+            IconButton(
+              icon: const Icon(Icons.swap_horiz_rounded, color: Colors.white, size: 24),
+              tooltip: 'Đổi đợt khóa luận',
+              onPressed: _openPeriodSelector,
+            ),
           IconButton(
             icon: const Icon(Icons.refresh_rounded, color: Colors.white, size: 22),
             tooltip: 'Làm mới số liệu thực tế',
@@ -182,7 +221,8 @@ class _ManagerDetailedStatsScreenState extends State<ManagerDetailedStatsScreen>
           else ...[
             DonutStatCard(
               title: 'Tình hình Đề tài & Hướng dẫn Toàn Khoa',
-              filterPillText: stats.periodName.isNotEmpty ? stats.periodName : 'HK1 (2026-2027)',
+              filterPillText: _currentPeriod?.periodName ?? (stats.periodName.isNotEmpty ? stats.periodName : 'HK1 (2026-2027)'),
+              onFilterTap: _periods.length >= 2 ? _openPeriodSelector : null,
               topSummaryWidget: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(
@@ -969,14 +1009,14 @@ class _ManagerDetailedStatsScreenState extends State<ManagerDetailedStatsScreen>
                   colors: colors,
                   title: 'Báo cáo 01: Danh sách Đề tài & Giảng viên Hướng dẫn',
                   subtitle: 'Định dạng PDF & Excel • Dữ liệu tổng hợp theo đợt khóa luận',
-                  onTap: () => _showExportSuccessDialog('Báo cáo 01: Danh sách Đề tài & GVHD', colors),
+                  onTap: () => _handleExportReport(1),
                 ),
                 const SizedBox(height: 10),
                 _buildReportOptionItem(
                   colors: colors,
                   title: 'Báo cáo 02: Tình hình Tiến độ Tuần & Thống kê Nộp trễ',
                   subtitle: 'Theo dõi mốc 23:59 • Tổng hợp tỷ lệ đúng hạn & nộp trễ thực tế',
-                  onTap: () => _showExportSuccessDialog('Báo cáo 02: Tiến độ & Thống kê Nộp trễ', colors),
+                  onTap: () => _handleExportReport(2),
                 ),
                 const SizedBox(height: 10),
                 _buildReportOptionItem(
@@ -985,14 +1025,14 @@ class _ManagerDetailedStatsScreenState extends State<ManagerDetailedStatsScreen>
                   subtitle: _committees.isNotEmpty
                       ? '${_committees.length} Hội đồng bảo vệ đã thành lập'
                       : 'Chưa có hội đồng bảo vệ được thành lập trong đợt này',
-                  onTap: () => _showExportSuccessDialog('Báo cáo 03: Quyết định Hội đồng Bảo vệ', colors),
+                  onTap: () => _handleExportReport(3),
                 ),
                 const SizedBox(height: 10),
                 _buildReportOptionItem(
                   colors: colors,
                   title: 'Báo cáo 04: Thống kê Điểm số & Xếp loại Khóa luận',
                   subtitle: 'Phổ điểm theo CĐR • Xuất mẫu biểu phòng Đào tạo',
-                  onTap: () => _showExportSuccessDialog('Báo cáo 04: Bảng điểm & Xếp loại Khóa luận', colors),
+                  onTap: () => _handleExportReport(4),
                 ),
               ],
             ),
@@ -1033,31 +1073,46 @@ class _ManagerDetailedStatsScreenState extends State<ManagerDetailedStatsScreen>
     );
   }
 
-  void _showExportSuccessDialog(String reportName, AppColors colors) {
+  Future<void> _handleExportReport(int reportType) async {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: colors.cardBg,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(
-          children: [
-            Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 26),
-            SizedBox(width: 8),
-            Text('Kết Xuất Thành Công', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF10B981))),
-          ],
-        ),
-        content: Text(
-          'Đã xử lý và kết xuất thành công "$reportName" theo mẫu biểu Trường ĐH Công Thương TP.HCM.\n\nFile báo cáo sẵn sàng để lưu trữ hoặc in ấn.',
-          style: TextStyle(fontSize: 13, color: colors.textSecondary, height: 1.4),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('ĐÓNG', style: TextStyle(fontWeight: FontWeight.w800)),
-          ),
-        ],
+      barrierDismissible: false,
+      builder: (_) => const Center(
+        child: CircularProgressIndicator(color: Color(0xFF1E3A8A), strokeWidth: 3),
       ),
     );
+
+    try {
+      ReportExportData reportData;
+      switch (reportType) {
+        case 1:
+          reportData = await ReportExportService().prepareThesesReport(periodId: _currentPeriod?.periodId);
+          break;
+        case 2:
+          reportData = await ReportExportService().prepareLateSubmissionsReport(periodId: _currentPeriod?.periodId);
+          break;
+        case 3:
+          reportData = await ReportExportService().prepareCommitteesReport(periodId: _currentPeriod?.periodId);
+          break;
+        case 4:
+        default:
+          reportData = await ReportExportService().prepareScoringOverviewReport(periodId: _currentPeriod?.periodId);
+          break;
+      }
+
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+        await ReportExportBottomSheet.show(
+          context: context,
+          reportData: reportData,
+          user: widget.user,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+        AppToast.showError(context, 'Lỗi khi trích xuất dữ liệu: $e', title: 'Xuất báo cáo thất bại');
+      }
+    }
   }
 }
-

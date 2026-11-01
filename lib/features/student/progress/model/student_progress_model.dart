@@ -1,14 +1,23 @@
 import 'dart:convert';
 
-String _fixEncoding(String? text) {
+String fixEncoding(String? text) {
   if (text == null || text.isEmpty) return '';
   try {
-    if (text.contains('Ã') || text.contains('á»') || text.contains('áº') || text.contains('Ä')) {
+    if (text.contains('Ã') ||
+        text.contains('á»') ||
+        text.contains('áº') ||
+        text.contains('Ä') ||
+        text.contains('Æ') ||
+        text.contains('Bá') ||
+        text.contains('chÆ') ||
+        text.contains('Ä‘') ||
+        text.contains('Â')) {
       return utf8.decode(latin1.encode(text));
     }
   } catch (_) {}
   return text;
 }
+
 
 class StudentThesisProgressModel {
   final bool hasThesis;
@@ -40,9 +49,10 @@ class StudentThesisProgressModel {
 
   factory StudentThesisProgressModel.fromJson(Map<String, dynamic> json) {
     if (json['hasThesis'] == false) {
+      final msg = fixEncoding(json['message']?.toString());
       return StudentThesisProgressModel(
         hasThesis: false,
-        message: json['message']?.toString() ?? 'Bạn chưa có đề tài được duyệt.',
+        message: msg.isNotEmpty ? msg : 'Bạn chưa có đề tài được duyệt.',
       );
     }
 
@@ -51,13 +61,13 @@ class StudentThesisProgressModel {
 
     return StudentThesisProgressModel(
       hasThesis: true,
-      message: json['message']?.toString(),
+      message: fixEncoding(json['message']?.toString()),
       thesisId: json['thesisId'] is int
           ? json['thesisId']
           : (int.tryParse(json['thesisId']?.toString() ?? '0') ?? 0),
-      thesisTitle: _fixEncoding(json['thesisTitle']?.toString() ?? ''),
-      supervisorName: _fixEncoding(json['supervisorName']?.toString() ?? 'Chưa phân công'),
-      periodName: _fixEncoding(json['periodName']?.toString() ?? 'Đợt khóa luận'),
+      thesisTitle: fixEncoding(json['thesisTitle']?.toString() ?? ''),
+      supervisorName: fixEncoding(json['supervisorName']?.toString() ?? 'Chưa phân công'),
+      periodName: fixEncoding(json['periodName']?.toString() ?? 'Đợt khóa luận'),
       students: rawStudents.map((e) => ThesisStudentMemberModel.fromJson(e as Map<String, dynamic>)).toList(),
       weeklyPlans: rawPlans.map((e) => WeeklyPlanModel.fromJson(e as Map<String, dynamic>)).toList(),
     );
@@ -85,7 +95,7 @@ class ThesisStudentMemberModel {
           ? json['studentId']
           : (int.tryParse(json['studentId']?.toString() ?? '0') ?? 0),
       studentCode: json['studentCode']?.toString() ?? '',
-      fullName: json['fullName']?.toString() ?? '',
+      fullName: fixEncoding(json['fullName']?.toString() ?? ''),
       classCode: json['classCode']?.toString() ?? '',
       isLeader: json['isLeader'] == true,
     );
@@ -134,8 +144,8 @@ class WeeklyPlanModel {
       planId: json['planId'] is int ? json['planId'] : (int.tryParse(json['planId']?.toString() ?? '0') ?? 0),
       thesisId: json['thesisId'] is int ? json['thesisId'] : (int.tryParse(json['thesisId']?.toString() ?? '0') ?? 0),
       weekNumber: json['weekNumber'] is int ? json['weekNumber'] : (int.tryParse(json['weekNumber']?.toString() ?? '0') ?? 0),
-      title: _fixEncoding(json['title']?.toString() ?? ''),
-      detailedRequirements: _fixEncoding(json['detailedRequirements']?.toString() ?? ''),
+      title: fixEncoding(json['title']?.toString() ?? ''),
+      detailedRequirements: fixEncoding(json['detailedRequirements']?.toString() ?? ''),
       deadline: parsedDeadline,
       isOverdue: overdue,
       report: json['report'] != null && json['report'] is Map<String, dynamic>
@@ -174,34 +184,20 @@ class ProgressReportItemModel {
       parsedSubmittedAt = DateTime.tryParse(json['submittedAt'].toString());
     }
 
-    double? parsedScore;
-    if (json['supervisorScore'] != null) {
-      parsedScore = double.tryParse(json['supervisorScore'].toString());
-    }
-
-    final feedback = json['supervisorFeedback'] != null ? _fixEncoding(json['supervisorFeedback'].toString()) : null;
-    final status = json['submissionStatus']?.toString() ?? 'Assigned';
-    final hasFeedback = feedback != null && feedback.trim().isNotEmpty;
-    final isExplicitGradedStatus = status == 'Reviewed' || status == 'Approved' || status == 'NeedsRevision';
-
-    // Chỉ coi là đã chấm (isGraded) khi giảng viên thực sự đã cho điểm, có nhận xét, hoặc chuyển sang trạng thái đã đánh giá
-    final bool actuallyGraded = (json['isGraded'] == true || isExplicitGradedStatus || parsedScore != null || hasFeedback)
-        && (parsedScore != null || hasFeedback || isExplicitGradedStatus);
-
-    final bool? parsedIsPassed = actuallyGraded
-        ? (json['isPassed'] == true ? true : (json['isPassed'] == false ? false : null))
-        : null;
-
     return ProgressReportItemModel(
       reportId: json['reportId'] is int ? json['reportId'] : (int.tryParse(json['reportId']?.toString() ?? '0') ?? 0),
-      content: _fixEncoding(json['content']?.toString() ?? ''),
+      content: fixEncoding(json['content']?.toString() ?? ''),
       reportFileUrl: json['reportFileUrl']?.toString(),
       submittedAt: parsedSubmittedAt,
-      submissionStatus: status,
-      supervisorFeedback: feedback,
-      supervisorScore: parsedScore,
-      isPassed: parsedIsPassed,
-      isGraded: actuallyGraded,
+      submissionStatus: json['submissionStatus']?.toString() ?? 'Submitted',
+      supervisorFeedback: fixEncoding(json['supervisorFeedback']?.toString()),
+      supervisorScore: json['supervisorScore'] != null
+          ? (json['supervisorScore'] is num
+              ? (json['supervisorScore'] as num).toDouble()
+              : double.tryParse(json['supervisorScore'].toString()))
+          : null,
+      isPassed: json['isPassed'] == true,
+      isGraded: json['isGraded'] == true,
     );
   }
 }
